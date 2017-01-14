@@ -2,7 +2,8 @@
 
 # sqre-uservice-ccutter
 
-LSST DM SQuaRE api.lsst.codes-compliant microservice wrapper.  TODO
+LSST DM SQuaRE api.lsst.codes-compliant microservice wrapper for
+cookiecutter projects.
 
 ## Usage
 

@@ -42,6 +42,7 @@ setup(
     packages=find_packages(exclude=['docs', 'tests*']),
     install_requires=[
         'sqre-apikit==0.0.10',
+        'sqre-codekit==2.0.0'
     ],
     tests_require=['pytest'],
     entry_points={
