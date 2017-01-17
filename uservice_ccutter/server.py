@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 """ccutter microservice framework"""
+import json
+import os
 import os.path
 import time
 try:
@@ -11,8 +13,10 @@ except ImportError:
 from apikit import APIFlask
 from apikit import BackendError
 from codekit.codetools import TempDir
+from collections import OrderedDict
 from cookiecutter.main import cookiecutter
 from flask import jsonify, request
+from time import sleep
 import git
 import requests
 from .plugins import substitute
@@ -66,7 +70,7 @@ def server(run_standalone=False):
                 return jsonify(get_single_project_type(ptype))
             # Now we're POSTing.
             print(request.data)
-            userdict = request.get_json()
+            userdict = json.loads(request.data, object_pairs_hook=OrderedDict)
             print(userdict)
             # Here's the magic.
             substitute(ptype, userdict)
@@ -77,12 +81,19 @@ def server(run_standalone=False):
         def create_project(ptype, userdict):
             """Create the project"""
             cloneurl = app.config["PROJECTTYPE"][ptype]["cloneurl"]
-            with TempDir() as tempdir:
-                git.Git().clone(cloneurl, tempdir)
+            with TempDir() as workdir:
+                clonedir = workdir + "/clonesrc"
+                tgtdir = workdir + "/tgt"
+                os.mkdir(clonedir)
+                os.mkdir(tgtdir)
+                os.chdir(tgtdir)
+                git.Git().clone(cloneurl, clonedir)
                 # replace cookiecutter.json
-                with open(tempdir + "/cookiecutter.json", "w") as ccf:
-                    ccf.write(json.dumps(userdict, indent=4, sort_keys=True))
-                cookiecutter(tempdir, no_input=True)
+                print(workdir)
+                with open(clonedir + "/cookiecutter.json", "w") as ccf:
+                    ccf.write(json.dumps(userdict, indent=4))
+                cookiecutter(clonedir, no_input=True)
+                # DEBUG
                 sleep(7200)
 
         def get_single_project_type(ptype):
