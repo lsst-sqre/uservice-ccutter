@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 """ccutter microservice framework"""
+from copy import deepcopy
+import pprint
 import json
 import os
 import os.path
@@ -32,8 +34,12 @@ def server(run_standalone=False):
                        repository="https://github.com/sqre-lsst/uservice-ccutter",
                        description="Bootstrapper for cookiecutter projects",
                        route=["/", "/ccutter"],
-                       auth={"type": "none"})
+                       auth={"type": "basic",
+                             "data": {"username": "",
+                                      "password": ""}})
         app.config["PROJECTTYPE"] = {}
+        # Cookiecutter requires the order be preserved.
+        app.config["JSON_SORT_KEYS"] = False
         _refresh_cache(app, temp_dir, 60 * 60 * 8)
 
         @app.errorhandler(BackendError)
@@ -66,19 +72,39 @@ def server(run_standalone=False):
         # pylint: disable=unused-variable
         def action_for_type(ptype):
             """Either return the template, or create a new thing"""
+            pprint.pprint(request, indent=4, width=80)
+            pprint.pprint(request.method, indent=4, width=80)
+            pprint.pprint(request.data, indent=4, width=80)
+            pprint.pprint(request.form, indent=4, width=80)
             if request.method == "GET":
                 return jsonify(get_single_project_type(ptype))
+            post_request(ptype)
+
+        def post_request(ptype):
             # Now we're POSTing.
-            print(request.data)
-            userdict = json.loads(request.data, object_pairs_hook=OrderedDict)
+            # We need authorization to post.  Raise error if not.
+            check_authorization()
+            auth = app.config["AUTH"]["data"]
+            # Get data from request
+            inputdict = request.get_json()
+            if not inputdict:
+                raise BackendError(reason="Bad Request",
+                                   status_code=400,
+                                   content="POST data must not be empty.")
+            # We need an OrderedDict for cookiecutter to work correctly,
+            # ...and we can't trust the order we get from the client, because
+            #  JavaScript...
+            userdict = deepcopy(app.config["PROJECTTYPE"][ptype]["template"])
+            for fld in inputdict:
+                userdict[fld] = inputdict[fld]
             print(userdict)
             # Here's the magic.
-            substitute(ptype, userdict)
-            create_project(ptype, userdict)
+            substitute(ptype, auth, userdict)
+            create_project(ptype, auth, userdict)
             print(userdict)
             return "OK"
 
-        def create_project(ptype, userdict):
+        def create_project(ptype, auth, userdict):
             """Create the project"""
             cloneurl = app.config["PROJECTTYPE"][ptype]["cloneurl"]
             with TempDir() as workdir:
@@ -93,11 +119,32 @@ def server(run_standalone=False):
                 with open(clonedir + "/cookiecutter.json", "w") as ccf:
                     ccf.write(json.dumps(userdict, indent=4))
                 cookiecutter(clonedir, no_input=True)
+                # Here we make the assumption that cookiecutter created
+                #  a single directory.  For our projects, that is a good
+                #  assumption, usually
+                flist = os.listdir(tgtdir)
+                if not flist:
+                    raise BackendError(status_code=500,
+                                       reason="Internal Server Error",
+                                       content="No project created")
+                gitdir = tgtdir + "/" + flist[0]
+                os.chdir(gitdir)
+                # Create the initial (local) repository and commit the
+                #  current state.
+                repo = git.Repo.init(gitdir)
+                allfiles = repo.untracked_files
+                idx = repo.index
+                idx.add(allfiles)
+                # Looks like userdict should include author email....
+                committer = git.Actor(userdict["first_author"],
+                                      "sqrbot@lsst.org")
+                idx.commit("Initial commit.", author=committer,
+                           committer=committer)
                 # DEBUG
                 sleep(7200)
 
         def get_single_project_type(ptype):
-            """Return a single project type's cookiecutter.json"""
+            """Return a single project type's cookiecutter.json."""
             if ptype not in app.config["PROJECTTYPE"]:
                 types = [x for x in app.config["PROJECTTYPE"]]
                 raise BackendError(status_code=400,
@@ -105,6 +152,17 @@ def server(run_standalone=False):
                                    content="Project type must be one of " +
                                    str(types))
             return app.config["PROJECTTYPE"][ptype]["template"]
+
+        def check_authorization():
+            """Sets app.auth["data"] if credentials provided, raises an 
+            error otherwise."""
+            iauth = request.authorization
+            if iauth is None:
+                raise BackendError(reason="Unauthorized",
+                                   status_code=401,
+                                   content="No authorization provided.")
+            app.config["AUTH"]["data"]["username"] = iauth.username
+            app.config["AUTH"]["data"]["password"] = iauth.password
 
         if run_standalone:
             app.run(host='0.0.0.0', threaded=True)
@@ -144,12 +202,16 @@ def _refresh_cache(app, temp_dir, timeout):
         if pname not in app.config["PROJECTTYPE"]:
             app.config["PROJECTTYPE"][pname] = {}
         if "template" not in app.config["PROJECTTYPE"][pname]:
-            app.config["PROJECTTYPE"][pname]["template"] = {}
+            app.config["PROJECTTYPE"][pname]["template"] = OrderedDict()
         if resp.status_code != 200:
             raise BackendError(reason=resp.reason,
                                status_code=resp.status_code,
                                content=resp.text)
-        app.config["PROJECTTYPE"][pname]["template"] = resp.json()
+        content = resp.content
+        pprint.pprint(content)
+        tdata = json.loads(content, object_pairs_hook=OrderedDict)
+        app.config["PROJECTTYPE"][pname]["template"] = tdata
+        pprint.pprint(tdata)
         app.config["PROJECTTYPE"][pname]["cloneurl"] = purl
         with open(pdir + "/" + ccj, "w") as wfile:
             wfile.write(resp.text)

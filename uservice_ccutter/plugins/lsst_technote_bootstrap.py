@@ -10,40 +10,58 @@ values in that dictionary.
 
 """
 import requests
+import github3
 from apikit import BackendError
 from .generic import current_year
 
+ORGHASH = {"sqr": "lsst-sqre",
+           "dmtn": "lsst-dm",
+           "smtn": "lsst-sims",
+           "ldm": "lsst"}
 
-def serial_number(inputdict):
+
+def serial_number(auth, inputdict):
     """Find the next available serial number for the specified series."""
-    series = inputdict["series"]
-    # Requires that the series pick list have already been replaced with a
+    series = inputdict["series"].lower()
+    # Requires that the series pick list has already been replaced with a
     #  string.
-    series = series.lower()  # Should already be canonicalized, but...
-    # Just scan the product list and match the series.
-    # Then peel off the number.
-    # We assume that a properly formatted technote *has* a number at the
-    #  end of the series name.
-    resp = requests.get("https://keeper.lsst.codes/products")
-    if resp.status_code != 200:
-        raise BackendError(status_code=resp.status_code,
-                           reason=resp.reason,
-                           content=resp.text)
-    plist = resp.json()["products"]
-    maxn = 0
-    for prod in plist:
-        pname = prod.split("/")[-1]
-        ser = pname.split("-")[0]
-        if ser != series:
-            continue
-        snum = pname.split("-")[-1]
-        num = int(snum)
-        if num > maxn:
-            maxn = num
-    return "%03d" % (maxn + 1)
+    # Derive github_org from the series
+    gh_org = ORGHASH[series]
+
+    # scanning the product list won't work.  We need to find the next
+    #  Github repo to use.
+
+    ghub = github3.login(auth["username"], token=auth["password"])
+    try:
+        ghuser = ghub.me()
+    except github3.exceptions.AuthenticationFailed:
+        raise BackendError(status_code=401,
+                           reason="Bad credentials",
+                           content="Github login failed.")
+    max_serial = 0
+    matchstr = gh_org + "/" + series + "-"
+    for repo in ghub.repositories():
+        rnm = str(repo)
+        if rnm.startswith(matchstr):
+            serstr = rnm[(len(matchstr)):]
+            try:
+                sernum = int(serstr)
+                if sernum > max_serial:
+                    max_serial = sernum
+            except ValueError:
+                # We take "couldn't decode" as "not a serial"
+                pass
+    return "%03d" % (max_serial + 1)
 
 
-def copyright_year(inputdict):
+def github_org(auth, inputdict):
+    """Github Org is derivable from the series"""
+    _ = auth
+    return ORGHASH[inputdict["series"].lower()]
+
+
+def copyright_year(auth, inputdict):
     """Replace copyright_year with current year"""
     _ = inputdict
+    _ = auth
     return current_year()

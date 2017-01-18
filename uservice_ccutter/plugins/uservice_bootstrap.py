@@ -12,7 +12,8 @@ values in that dictionary.
 from .generic import current_year
 
 
-def year(inputdict):
+def year(auth, inputdict):
     _ = inputdict
+    _ = auth
     """Replace year with current year"""
     return current_year()
