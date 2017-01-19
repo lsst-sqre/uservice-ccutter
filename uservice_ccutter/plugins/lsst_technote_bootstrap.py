@@ -51,17 +51,31 @@ def serial_number(auth, inputdict):
             except ValueError:
                 # We take "couldn't decode" as "not a serial"
                 pass
-    return "%03d" % (max_serial + 1)
+    serial = "%03d" % (max_serial + 1)
+    # Actually the same as github_namespace, but the Jinja2 substitution will
+    #  not have happened yet.
+    if "github_repo" not in inputdict or not inputdict["github_repo"]:
+        inputdict["github_repo"] = gh_org + "/" + series + "-" + serial
+    return serial
 
 
 def github_org(auth, inputdict):
-    """Github Org is derivable from the series"""
+    """Derive Github Org from the series."""
     _ = auth
     return ORGHASH[inputdict["series"].lower()]
 
 
 def copyright_year(auth, inputdict):
-    """Replace copyright_year with current year"""
+    """Replace copyright_year with current year."""
     _ = inputdict
     _ = auth
     return current_year()
+
+
+def first_author(auth, inputdict):
+    """Set canonical GH fields for project creation."""
+    if "github_name" not in inputdict or not inputdict["github_name"]:
+        inputdict["github_name"] = inputdict["first_author"]
+    # And since we don't currently have email....
+    if "github_email" not in inputdict or not inputdict["github_email"]:
+        inputdict["github_email"] = "sqrbot@lsst.org"

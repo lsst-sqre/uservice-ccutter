@@ -20,6 +20,7 @@ from cookiecutter.main import cookiecutter
 from flask import jsonify, request
 from time import sleep
 import git
+import github3
 import requests
 from .plugins import substitute
 from .projecturls import PROJECTURLS
@@ -121,13 +122,16 @@ def server(run_standalone=False):
                 cookiecutter(clonedir, no_input=True)
                 # Here we make the assumption that cookiecutter created
                 #  a single directory.  For our projects, that is a good
-                #  assumption, usually
+                #  assumption, usually: a git repo has a unique top-level
+                #  directory, and a-thing-to-be-committed-by-git is what
+                #  we are using cookiecutter for.
                 flist = os.listdir(tgtdir)
                 if not flist:
                     raise BackendError(status_code=500,
                                        reason="Internal Server Error",
                                        content="No project created")
-                gitdir = tgtdir + "/" + flist[0]
+                gitbase = flist[0]
+                gitdir = tgtdir + "/" + gitbase
                 os.chdir(gitdir)
                 # Create the initial (local) repository and commit the
                 #  current state.
@@ -136,12 +140,54 @@ def server(run_standalone=False):
                 idx = repo.index
                 idx.add(allfiles)
                 # Looks like userdict should include author email....
-                committer = git.Actor(userdict["first_author"],
-                                      "sqrbot@lsst.org")
+                # We need consistent field names here...but we can
+                #  synthesize them in the plugin.
+                # git_name and git_email it is.
+                committer = git.Actor(userdict["github_name"],
+                                      userdict["github_email"])
                 idx.commit("Initial commit.", author=committer,
                            committer=committer)
+                # Now we need to create the repository at Github....
+                #  userdict["github_repo"] must exist.
+                remote_url = create_github_repository(auth, userdict)
+                remote = repo.create_remote("origin", url=remote_url)
+                # Surely this will not work.
+                remote.push(refspec="master:master")
                 # DEBUG
                 sleep(7200)
+
+        def create_github_repository(auth, userdict):
+            ghub = github3.login(auth["username"], token=auth["password"])
+            try:
+                ghuser = ghub.me()
+            except github3.exceptions.AuthenticationFailed:
+                raise BackendError(status_code=401,
+                                   reason="Bad credentials",
+                                   content="Github login failed.")
+            namespc = userdict["github_repo"]
+            org, name = namespc.split('/')
+            desc = ""
+            if "description" in userdict:
+                desc = userdict["description"]
+            pprint.pprint(ghub.__dict__)
+            gh_org = None
+            pprint.pprint(ghuser)
+            for gorg in ghuser.organizations():
+                print("ORG: " + gorg.name)
+                if gorg.name == org:
+                    gh_org = gorg
+                    break
+            if gh_org is None:
+                raise BackendError(status_code=500,
+                                   reason="Internal Server Error",
+                                   content=auth["username"] +
+                                   " not in org " + org)
+            repo = gh_org.create_repository(name, description=desc)
+            if repo is None:
+                raise BackendError(status_code=500,
+                                   reason="Internal Server Error",
+                                   content="Github repository not created")
+            return repo.clone_url
 
         def get_single_project_type(ptype):
             """Return a single project type's cookiecutter.json."""

@@ -15,5 +15,27 @@ from .generic import current_year
 def year(auth, inputdict):
     _ = inputdict
     _ = auth
-    """Replace year with current year"""
+    """Replace year with current year."""
     return current_year()
+
+
+def author_name(auth, inputdict):
+    """Set canonical GH author field for project creation."""
+    _ = auth
+    if "github_name" not in inputdict or not inputdict["github_email"]:
+        inputdict["github_name"] = inputdict["author_name"]
+
+
+def email(auth, inputdict):
+    """Set canonical GH email field for project creation."""
+    _ = auth
+    if "github_email" not in inputdict or not inputdict["github_email"]:
+        inputdict["github_email"] = inputdict["email"]
+
+
+def svc_name(auth, inputdict):
+    """Derive github_repo from svc_name."""
+    # This happens before Jinja2 template substitution.
+    if ["github_repo"] not in inputdict or not inputdict["github_repo"]:
+        inputdict["github_repo"] = "sqre-lsst/uservice-" + \
+                                   inputdict["svc_name"]
