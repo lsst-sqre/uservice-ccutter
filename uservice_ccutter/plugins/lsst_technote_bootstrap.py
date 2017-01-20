@@ -79,3 +79,4 @@ def first_author(auth, inputdict):
     # And since we don't currently have email....
     if "github_email" not in inputdict or not inputdict["github_email"]:
         inputdict["github_email"] = "sqrbot@lsst.org"
+    return inputdict["first_author"]

@@ -19,6 +19,7 @@ from collections import OrderedDict
 from cookiecutter.main import cookiecutter
 from flask import jsonify, request
 from time import sleep
+from configparser import NoSectionError
 import git
 import github3
 import requests
@@ -73,13 +74,9 @@ def server(run_standalone=False):
         # pylint: disable=unused-variable
         def action_for_type(ptype):
             """Either return the template, or create a new thing"""
-            pprint.pprint(request, indent=4, width=80)
-            pprint.pprint(request.method, indent=4, width=80)
-            pprint.pprint(request.data, indent=4, width=80)
-            pprint.pprint(request.form, indent=4, width=80)
             if request.method == "GET":
                 return jsonify(get_single_project_type(ptype))
-            post_request(ptype)
+            return post_request(ptype)
 
         def post_request(ptype):
             # Now we're POSTing.
@@ -101,9 +98,8 @@ def server(run_standalone=False):
             print(userdict)
             # Here's the magic.
             substitute(ptype, auth, userdict)
-            create_project(ptype, auth, userdict)
-            print(userdict)
-            return "OK"
+            retval = create_project(ptype, auth, userdict)
+            return jsonify(retval)
 
         def create_project(ptype, auth, userdict):
             """Create the project"""
@@ -150,11 +146,22 @@ def server(run_standalone=False):
                 # Now we need to create the repository at Github....
                 #  userdict["github_repo"] must exist.
                 remote_url = create_github_repository(auth, userdict)
-                remote = repo.create_remote("origin", url=remote_url)
-                # Surely this will not work.
-                remote.push(refspec="master:master")
-                # DEBUG
-                sleep(7200)
+                # Warning: NASTY
+                # Set up remote config to auth correctly
+                chlp = '!f() { cat > /dev/null; echo username="'
+                chlp += auth["username"] + '"; echo password="'
+                chlp += auth["password"] + '" }; f'
+                origin = repo.create_remote("origin", url=remote_url)
+                cwr = repo.config_writer()
+                try:
+                    cwr.set("credential", "helper", chlp)
+                except NoSectionError:
+                    cwr.add_section("credential")
+                    cwr.set("credential", "helper", chlp)
+                origin.push(refspec="master:master")
+                cwr.release()
+                retdict = {"repo_url": remote_url}
+                return retdict
 
         def create_github_repository(auth, userdict):
             ghub = github3.login(auth["username"], token=auth["password"])
@@ -169,12 +176,9 @@ def server(run_standalone=False):
             desc = ""
             if "description" in userdict:
                 desc = userdict["description"]
-            pprint.pprint(ghub.__dict__)
             gh_org = None
-            pprint.pprint(ghuser)
-            for gorg in ghuser.organizations():
-                print("ORG: " + gorg.name)
-                if gorg.name == org:
+            for gorg in ghub.organizations():
+                if gorg.login == org:
                     gh_org = gorg
                     break
             if gh_org is None:

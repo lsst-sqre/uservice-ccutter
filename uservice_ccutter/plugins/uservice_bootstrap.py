@@ -24,6 +24,7 @@ def author_name(auth, inputdict):
     _ = auth
     if "github_name" not in inputdict or not inputdict["github_email"]:
         inputdict["github_name"] = inputdict["author_name"]
+    return inputdict["author_name"]
 
 
 def email(auth, inputdict):
@@ -31,11 +32,13 @@ def email(auth, inputdict):
     _ = auth
     if "github_email" not in inputdict or not inputdict["github_email"]:
         inputdict["github_email"] = inputdict["email"]
+    return inputdict["email"]
 
 
 def svc_name(auth, inputdict):
     """Derive github_repo from svc_name."""
     # This happens before Jinja2 template substitution.
-    if ["github_repo"] not in inputdict or not inputdict["github_repo"]:
-        inputdict["github_repo"] = "sqre-lsst/uservice-" + \
+    if "github_repo" not in inputdict or not inputdict["github_repo"]:
+        inputdict["github_repo"] = "lsst-sqre/uservice-" + \
                                    inputdict["svc_name"]
+    return inputdict["svc_name"]
