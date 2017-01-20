@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 """ccutter microservice framework"""
-from __future__ import print_function
 import json
-import pprint
+import logging
 import os
 import os.path
 import time
@@ -27,7 +26,7 @@ from .plugins import substitute
 from .projecturls import PROJECTURLS
 
 
-def server(run_standalone=False):
+def server(run_standalone=False, debug=False):
     """Create the app and then run it."""
     # Add "/ccutter" for mapping behind api.lsst.codes
     with TempDir() as temp_dir:
@@ -97,7 +96,6 @@ def server(run_standalone=False):
             userdict = deepcopy(app.config["PROJECTTYPE"][ptype]["template"])
             for fld in inputdict:
                 userdict[fld] = inputdict[fld]
-            print(userdict)
             # Here's the magic.
             substitute(ptype, auth, userdict)
             retval = create_project(ptype, auth, userdict)
@@ -115,7 +113,6 @@ def server(run_standalone=False):
                 os.chdir(tgtdir)
                 git.Git().clone(cloneurl, clonedir)
                 # replace cookiecutter.json
-                print(workdir)
                 with open(clonedir + "/cookiecutter.json", "w") as ccf:
                     ccf.write(json.dumps(userdict, indent=4))
                 cookiecutter(clonedir, no_input=True)
@@ -150,10 +147,11 @@ def server(run_standalone=False):
                 #  userdict["github_repo"] must exist.
                 remote_url = create_github_repository(auth, userdict)
                 # Warning: NASTY
+                # Warning: also VERY FINICKY
                 # Set up remote config to auth correctly
-                chlp = '!f() { cat > /dev/null; echo username="'
-                chlp += auth["username"] + '"; echo password="'
-                chlp += auth["password"] + '" }; f'
+                chlp = '!"f() { cat > /dev/null ; echo username='
+                chlp += auth["username"] + ' ; echo password='
+                chlp += auth["password"] + ' ; } ; f"'
                 origin = repo.create_remote("origin", url=remote_url)
                 cwr = repo.config_writer()
                 cwr.add_section("credential")
@@ -243,7 +241,6 @@ def _refresh_cache(app, temp_dir, timeout):
     # pylint: disable=too-many-locals
     ref = temp_dir + "/last_refresh"
     now = int(time.time())
-    print(temp_dir)
     if os.path.isfile(ref):
         with open(ref, "r") as rfile:
             cachedate = rfile.readline().rstrip("\n")
@@ -262,7 +259,6 @@ def _refresh_cache(app, temp_dir, timeout):
         ccj = "cookiecutter.json"
         rawpath = "https://raw.githubusercontent.com" + path
         rawpath += "/master/" + ccj
-        print("GET %s" % rawpath)
         resp = requests.get(rawpath)
         if pname not in app.config["PROJECTTYPE"]:
             app.config["PROJECTTYPE"][pname] = {}
@@ -273,10 +269,8 @@ def _refresh_cache(app, temp_dir, timeout):
                                status_code=resp.status_code,
                                content=resp.text)
         content = resp.content
-        pprint.pprint(content)
         tdata = json.loads(content, object_pairs_hook=OrderedDict)
         app.config["PROJECTTYPE"][pname]["template"] = tdata
-        pprint.pprint(tdata)
         app.config["PROJECTTYPE"][pname]["cloneurl"] = purl
         with open(pdir + "/" + ccj, "w") as wfile:
             wfile.write(resp.text)
