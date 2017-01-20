@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-"""ccutter microservice framework"""
+"""Cookiecutter microservice framework.
+"""
 import json
-import logging
 import os
 import os.path
 import time
@@ -19,19 +19,21 @@ import github3
 import requests
 from apikit import APIFlask
 from apikit import BackendError
-from codekit.codetools import TempDir
+from codekit.codetools import TempDir, get_git_credential_helper
 from cookiecutter.main import cookiecutter
+from cookiecutter.exceptions import CookiecutterException
 from flask import jsonify, request
-from .plugins import substitute
+from .plugins import substitute, finalize
 from .projecturls import PROJECTURLS
 
 
-def server(run_standalone=False, debug=False):
-    """Create the app and then run it."""
+def server(run_standalone=False):
+    """Create the app and then run it.
+    """
     # Add "/ccutter" for mapping behind api.lsst.codes
     with TempDir() as temp_dir:
         app = APIFlask(name="uservice-ccutter",
-                       version="0.0.1",
+                       version="0.0.2",
                        repository="https://github.com/sqre-lsst/" +
                        "uservice-ccutter",
                        description="Bootstrapper for cookiecutter projects",
@@ -56,14 +58,16 @@ def server(run_standalone=False, debug=False):
         @app.route("/")
         # pylint: disable=unused-variable
         def healthcheck():
-            """Default route to keep Ingress controller happy."""
+            """Default route to keep Ingress controller happy.
+            """
             return "OK"
 
         @app.route("/ccutter")
         @app.route("/ccutter/")
         # pylint: disable=unused-variable
         def display_project_types():
-            """Return cookiecutter.json for each project type"""
+            """Return cookiecutter.json for each project type.
+            """
             retval = {}
             for ptype in app.config["PROJECTTYPE"]:
                 retval[ptype] = get_single_project_type(ptype)
@@ -73,15 +77,17 @@ def server(run_standalone=False, debug=False):
         @app.route("/ccutter/<ptype>/", methods=["GET", "POST"])
         # pylint: disable=unused-variable
         def action_for_type(ptype):
-            """Either return the template, or create a new thing"""
+            """Either return the template, or create a new thing.
+            """
             if request.method == "GET":
                 return jsonify(get_single_project_type(ptype))
             return post_request(ptype)
 
         def post_request(ptype):
-            """Crete project: write to local repo and to GH."""
+            """Create project: write to local repo and to GitHub.
+            """
             # Now we're POSTing.
-            # We need authorization to post.  Raise error if not.
+            # We need authorization to POST.  Raise error if not.
             check_authorization()
             auth = app.config["AUTH"]["data"]
             # Get data from request
@@ -99,11 +105,13 @@ def server(run_standalone=False, debug=False):
             # Here's the magic.
             substitute(ptype, auth, userdict)
             retval = create_project(ptype, auth, userdict)
+            finalize(ptype, auth, userdict)
             return jsonify(retval)
 
         # pylint: disable=too-many-locals
         def create_project(ptype, auth, userdict):
-            """Create the project"""
+            """Create the project.
+            """
             cloneurl = app.config["PROJECTTYPE"][ptype]["cloneurl"]
             with TempDir() as workdir:
                 clonedir = workdir + "/clonesrc"
@@ -115,7 +123,13 @@ def server(run_standalone=False, debug=False):
                 # replace cookiecutter.json
                 with open(clonedir + "/cookiecutter.json", "w") as ccf:
                     ccf.write(json.dumps(userdict, indent=4))
-                cookiecutter(clonedir, no_input=True)
+                try:
+                    cookiecutter(clonedir, no_input=True)
+                except CookiecutterException as exc:
+                    raise BackendError(status_code=500,
+                                       reason="Internal Server Error",
+                                       content="Project creation failed: " +
+                                       str(exc))
                 # Here we make the assumption that cookiecutter created
                 #  a single directory.  For our projects, that is a good
                 #  assumption, usually: a git repo has a unique top-level
@@ -143,19 +157,18 @@ def server(run_standalone=False, debug=False):
                                       userdict["github_email"])
                 idx.commit("Initial commit.", author=committer,
                            committer=committer)
-                # Now we need to create the repository at Github....
+                # Now we need to create the repository at GitHub....
                 #  userdict["github_repo"] must exist.
                 remote_url = create_github_repository(auth, userdict)
-                # Warning: NASTY
-                # Warning: also VERY FINICKY
                 # Set up remote config to auth correctly
-                chlp = '!"f() { cat > /dev/null ; echo username='
-                chlp += auth["username"] + ' ; echo password='
-                chlp += auth["password"] + ' ; } ; f"'
+                chlp = get_git_credential_helper(auth["username"],
+                                                 auth["password"])
                 origin = repo.create_remote("origin", url=remote_url)
                 cwr = repo.config_writer()
-                cwr.add_section("credential")
+                if not cwr.has_section("credential"):
+                    cwr.add_section("credential")
                 cwr.set("credential", "helper", chlp)
+                cwr.release()
                 # https://gitpython.readthedocs.io/en/stable/tutorial.html
                 #  suggests that you need to wait/sync or something?
                 time.sleep(1)
@@ -171,43 +184,45 @@ def server(run_standalone=False, debug=False):
                                        reason="Internal Server Error",
                                        content="Git push to " +
                                        userdict["github_repo"] + " failed.")
-                cwr.release()
                 retdict = {"repo_url": remote_url}
                 return retdict
 
         def create_github_repository(auth, userdict):
-            """Create new repo at GH."""
+            """Create new repo at GitHub.
+            """
             ghub = github3.login(auth["username"], token=auth["password"])
             try:
                 ghub.me()
             except github3.exceptions.AuthenticationFailed:
                 raise BackendError(status_code=401,
                                    reason="Bad credentials",
-                                   content="Github login failed.")
+                                   content="GitHub login failed.")
             namespc = userdict["github_repo"]
-            org, name = namespc.split('/')
+            orgname, reponame = namespc.split('/')
             desc = ""
             if "description" in userdict:
                 desc = userdict["description"]
-            gh_org = None
-            for gorg in ghub.organizations():
-                if gorg.login == org:
-                    gh_org = gorg
+            org_object = None
+            # Find corresponding Organization object
+            for accessible_org in ghub.organizations():
+                if accessible_org.login == orgname:
+                    org_object = accessible_org
                     break
-            if gh_org is None:
+            if org_object is None:
                 raise BackendError(status_code=500,
                                    reason="Internal Server Error",
                                    content=auth["username"] +
-                                   " not in org " + org)
-            repo = gh_org.create_repository(name, description=desc)
+                                   " not in org " + orgname)
+            repo = org_object.create_repository(reponame, description=desc)
             if repo is None:
                 raise BackendError(status_code=500,
                                    reason="Internal Server Error",
-                                   content="Github repository not created")
+                                   content="GitHub repository not created")
             return repo.clone_url
 
         def get_single_project_type(ptype):
-            """Return a single project type's cookiecutter.json."""
+            """Return a single project type's cookiecutter.json.
+            """
             if ptype not in app.config["PROJECTTYPE"]:
                 types = [x for x in app.config["PROJECTTYPE"]]
                 raise BackendError(status_code=400,
@@ -218,7 +233,8 @@ def server(run_standalone=False, debug=False):
 
         def check_authorization():
             """Sets app.auth["data"] if credentials provided, raises an
-            error otherwise."""
+            error otherwise.
+            """
             iauth = request.authorization
             if iauth is None:
                 raise BackendError(reason="Unauthorized",
@@ -232,20 +248,34 @@ def server(run_standalone=False, debug=False):
 
 
 def standalone():
-    """Entry point for running as its own executable."""
+    """Entry point for running as its own executable.
+    """
     server(run_standalone=True)
 
 
 def _refresh_cache(app, temp_dir, timeout):
-    """Refresh cookiecutter.json cache if needed."""
+    """Refresh cookiecutter.json cache if needed.
+    """
     # pylint: disable=too-many-locals
     ref = temp_dir + "/last_refresh"
     now = int(time.time())
     if os.path.isfile(ref):
         with open(ref, "r") as rfile:
             cachedate = rfile.readline().rstrip("\n")
+            # If we have a last cache time newer than timeout seconds ago,
+            #  just return.
             if now - cachedate < timeout:
                 return
+    # Cache is older than timeout (or doesn't exist), so rebuild it.
+    # Hit each of our GitHub repositories for cookiecutter projects we
+    #  can build.  For each of those, retrieve the cookiecutter.json
+    #  file and make it into an OrderedDict.
+    # The dictionary of the cookiecutter.json files is stored in
+    #  app.config["PROJECTTYPE"][type]["template"].  Where to get a project
+    #  of that type is in app.config["PROJECTTYPE"][type]["cloneurl"].
+    # That way, when we're asked about what a particular project type
+    # needs, we only have to hit GitHub when first asked or when the
+    # timeout has expired.
     for purl in PROJECTURLS:
         pname = purl.split("/")[-1]
         typedir = temp_dir + "/" + pname

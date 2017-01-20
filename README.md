@@ -12,28 +12,28 @@ cookiecutter projects.
 
 ### Routes
 
-* `/`: returns `OK` (used by Google Container Engine Ingress healthcheck)
+* `GET /`: returns `OK` (used by Google Container Engine Ingress healthcheck)
 
-* `/ccutter`: returns a JSON structure.  The keys are the types of
+* `GET /ccutter`: returns a JSON structure.  The keys are the types of
   projects the service knows how to make with cookiecutter, and the values
   are what cookiecutter expects to use as cookiecutter.json for that
   type of project.
   
-* `/ccutter/<projecttype>`: returns a JSON structure for the named
+* `GET /ccutter/<projecttype>`: returns a JSON structure for the named
   project type.
   
-* `/ccutter/<projecttype>` (POST): accepts JSON representing a
+* `POST /ccutter/<projecttype>`: accepts JSON representing a
   filled-out cookiecutter.json form.  This must be authenticated: the
-  authentication headers should contain a username of the Github user
+  authentication headers should contain a username of the GitHub user
   that will be doing the project creation and commit, and the password
   field of the authentication header must contain the corresponding
-  Github token.  Presuming authentication and authorization succeed, the
+  GitHub token.  Presuming authentication and authorization succeed, the
   POST then:
     * Substitutes additional fields in the JSON depending on the project
       type.
     * Runs cookiecutter to create the project from the template.
-	* Creates a repository on Github for the project.
-	* Pushes the project content to Github
+	* Creates a repository on GitHub for the project.
+	* Pushes the project content to GitHub
   It returns a JSON structure with one field "github_repo", which
   contains the HTTPS clone url of the new repository.
 
@@ -41,7 +41,7 @@ cookiecutter projects.
 
 To add a new project type, the developer must do the following:
 
-1. Add the Github URL for the cookiecutter bootstrap for that type to
+1. Add the GitHub URL for the cookiecutter bootstrap for that type to
    `uservice_cookiecutter/projecturls.py`.
 2. Create a file <typename>.py in `uservice_cookiecutter/plugins`.  For
    each field you want automatically substituted, there must be a

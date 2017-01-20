@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Setuptools Script"""
+"""Setuptools script.
+"""
 import os
 import codecs
 from setuptools import setup, find_packages
@@ -9,7 +10,7 @@ DESCRIPTION = 'Bootstrapper for cookiecutter projects'
 AUTHOR = 'Adam Thornton'
 AUTHOR_EMAIL = 'athornton@lsst.org'
 URL = 'https://github.com/sqre-lsst/uservice-ccutter'
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 LICENSE = 'MIT'
 
 
@@ -42,10 +43,10 @@ setup(
     packages=find_packages(exclude=['docs', 'tests*']),
     install_requires=[
         'sqre-apikit==0.0.10',
-        'sqre-codekit==2.0.0',
+        'sqre-codekit==2.0.1',
         'cookiecutter==1.5.0'
     ],
-    tests_require=['pytest'],
+    tests_require=['pytest', 'pytest-flake8', 'pytest-cov'],
     entry_points={
         'console_scripts': [
             'sqre-uservice-ccutter = uservice_' +
