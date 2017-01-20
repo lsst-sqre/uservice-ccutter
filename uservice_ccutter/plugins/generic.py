@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Generic utility substitution functions used by multiple plugins"""
 import datetime
 

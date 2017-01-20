@@ -7,7 +7,7 @@ USER       root
 RUN        yum install -y epel-release
 RUN        yum repolist
 RUN        yum install -y git python-pip python-devel
-RUN	   yum install -y gcc openssl-devel
+RUN        yum install -y gcc openssl-devel
 RUN        pip install --upgrade pip
 RUN        useradd -d /home/flasker -m flasker
 RUN        mkdir /dist

@@ -42,10 +42,10 @@ setup(
     packages=find_packages(exclude=['docs', 'tests*']),
     install_requires=[
         'sqre-apikit==0.0.10',
-        'sqre-codekit==2.0.0',
+        'sqre-codekit==2.0.1',
         'cookiecutter==1.5.0'
     ],
-    tests_require=['pytest'],
+    tests_require=['pytest', 'pytest-flake8', 'pytest-cov'],
     entry_points={
         'console_scripts': [
             'sqre-uservice-ccutter = uservice_' +

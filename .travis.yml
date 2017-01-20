@@ -7,10 +7,10 @@ matrix:
     install:
     - pip install -r requirements.txt
     - pip install -e .
-    script: py.test
+    script: py.test --flake8 --cov=uservice_ccutter
   - env: TEST='py.test'
     python: '3.5'
     install:
     - pip install -r requirements.txt
     - pip install -e .
-    script: py.test
+    script: py.test --flake8 --cov=uservice_ccutter
