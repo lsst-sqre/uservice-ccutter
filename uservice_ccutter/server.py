@@ -1,28 +1,28 @@
 #!/usr/bin/env python
 """ccutter microservice framework"""
-from copy import deepcopy
-import pprint
+from __future__ import print_function
 import json
+import pprint
 import os
 import os.path
 import time
+from collections import OrderedDict
+from copy import deepcopy
 try:
     # Python 3
     from urllib.parse import urlparse
 except ImportError:
     # Python 2
     from urlparse import urlparse
+import git
+from git.exc import GitCommandError
+import github3
+import requests
 from apikit import APIFlask
 from apikit import BackendError
 from codekit.codetools import TempDir
-from collections import OrderedDict
 from cookiecutter.main import cookiecutter
 from flask import jsonify, request
-from time import sleep
-from configparser import NoSectionError
-import git
-import github3
-import requests
 from .plugins import substitute
 from .projecturls import PROJECTURLS
 
@@ -33,7 +33,8 @@ def server(run_standalone=False):
     with TempDir() as temp_dir:
         app = APIFlask(name="uservice-ccutter",
                        version="0.0.1",
-                       repository="https://github.com/sqre-lsst/uservice-ccutter",
+                       repository="https://github.com/sqre-lsst/" +
+                       "uservice-ccutter",
                        description="Bootstrapper for cookiecutter projects",
                        route=["/", "/ccutter"],
                        auth={"type": "basic",
@@ -79,6 +80,7 @@ def server(run_standalone=False):
             return post_request(ptype)
 
         def post_request(ptype):
+            """Crete project: write to local repo and to GH."""
             # Now we're POSTing.
             # We need authorization to post.  Raise error if not.
             check_authorization()
@@ -101,6 +103,7 @@ def server(run_standalone=False):
             retval = create_project(ptype, auth, userdict)
             return jsonify(retval)
 
+        # pylint: disable=too-many-locals
         def create_project(ptype, auth, userdict):
             """Create the project"""
             cloneurl = app.config["PROJECTTYPE"][ptype]["cloneurl"]
@@ -153,20 +156,32 @@ def server(run_standalone=False):
                 chlp += auth["password"] + '" }; f'
                 origin = repo.create_remote("origin", url=remote_url)
                 cwr = repo.config_writer()
+                cwr.add_section("credential")
+                cwr.set("credential", "helper", chlp)
+                # https://gitpython.readthedocs.io/en/stable/tutorial.html
+                #  suggests that you need to wait/sync or something?
+                time.sleep(1)
                 try:
-                    cwr.set("credential", "helper", chlp)
-                except NoSectionError:
-                    cwr.add_section("credential")
-                    cwr.set("credential", "helper", chlp)
-                origin.push(refspec="master:master")
+                    os.sync()
+                except AttributeError:
+                    # Python 2 doesn't expose this.  But set() is safe there.
+                    pass
+                try:
+                    origin.push(refspec="master:master")
+                except GitCommandError:
+                    raise BackendError(status_code=500,
+                                       reason="Internal Server Error",
+                                       content="Git push to " +
+                                       userdict["github_repo"] + "failed.")
                 cwr.release()
                 retdict = {"repo_url": remote_url}
                 return retdict
 
         def create_github_repository(auth, userdict):
+            """Create new repo at GH."""
             ghub = github3.login(auth["username"], token=auth["password"])
             try:
-                ghuser = ghub.me()
+                ghub.me()
             except github3.exceptions.AuthenticationFailed:
                 raise BackendError(status_code=401,
                                    reason="Bad credentials",
@@ -204,7 +219,7 @@ def server(run_standalone=False):
             return app.config["PROJECTTYPE"][ptype]["template"]
 
         def check_authorization():
-            """Sets app.auth["data"] if credentials provided, raises an 
+            """Sets app.auth["data"] if credentials provided, raises an
             error otherwise."""
             iauth = request.authorization
             if iauth is None:
@@ -225,7 +240,7 @@ def standalone():
 
 def _refresh_cache(app, temp_dir, timeout):
     """Refresh cookiecutter.json cache if needed."""
-    # pylint: disable=too-many-locals, superfluous-parens
+    # pylint: disable=too-many-locals
     ref = temp_dir + "/last_refresh"
     now = int(time.time())
     print(temp_dir)
@@ -268,6 +283,7 @@ def _refresh_cache(app, temp_dir, timeout):
     with open(ref, "w") as wfile:
         wfile.write("%d\n" % now)
     return
+
 
 if __name__ == "__main__":
     standalone()

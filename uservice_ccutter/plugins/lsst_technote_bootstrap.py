@@ -9,7 +9,6 @@ dictionary-requiring-substitution as input, and it will change the
 values in that dictionary.
 
 """
-import requests
 import github3
 from apikit import BackendError
 from .generic import current_year
@@ -33,7 +32,7 @@ def serial_number(auth, inputdict):
 
     ghub = github3.login(auth["username"], token=auth["password"])
     try:
-        ghuser = ghub.me()
+        ghub.me()
     except github3.exceptions.AuthenticationFailed:
         raise BackendError(status_code=401,
                            reason="Bad credentials",
@@ -61,19 +60,20 @@ def serial_number(auth, inputdict):
 
 def github_org(auth, inputdict):
     """Derive Github Org from the series."""
-    _ = auth
+    auth = auth
     return ORGHASH[inputdict["series"].lower()]
 
 
 def copyright_year(auth, inputdict):
     """Replace copyright_year with current year."""
-    _ = inputdict
-    _ = auth
+    inputdict = inputdict
+    auth = auth
     return current_year()
 
 
 def first_author(auth, inputdict):
     """Set canonical GH fields for project creation."""
+    auth = auth
     if "github_name" not in inputdict or not inputdict["github_name"]:
         inputdict["github_name"] = inputdict["first_author"]
     # And since we don't currently have email....
