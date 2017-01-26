@@ -22,7 +22,7 @@ from codekit.codetools import TempDir, get_git_credential_helper
 from cookiecutter.main import cookiecutter
 from cookiecutter.exceptions import CookiecutterException
 from flask import jsonify, request
-from .plugins import substitute
+from .plugins import substitute, finalize
 from .projecturls import PROJECTURLS
 
 
@@ -31,7 +31,7 @@ def server(run_standalone=False):
     # Add "/ccutter" for mapping behind api.lsst.codes
     with TempDir() as temp_dir:
         app = APIFlask(name="uservice-ccutter",
-                       version="0.0.1",
+                       version="0.0.2",
                        repository="https://github.com/sqre-lsst/" +
                        "uservice-ccutter",
                        description="Bootstrapper for cookiecutter projects",
@@ -99,6 +99,7 @@ def server(run_standalone=False):
             # Here's the magic.
             substitute(ptype, auth, userdict)
             retval = create_project(ptype, auth, userdict)
+            finalize(ptype, auth, userdict)
             return jsonify(retval)
 
         # pylint: disable=too-many-locals

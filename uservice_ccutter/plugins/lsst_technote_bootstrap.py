@@ -90,3 +90,8 @@ def first_author(auth, inputdict):
     if "github_email" not in inputdict or not inputdict["github_email"]:
         inputdict["github_email"] = "sqrbot@lsst.org"
     return inputdict["first_author"]
+
+
+def finalize_(auth, inputdict):
+    """Register with Keeper."""
+    pass

@@ -1,6 +1,5 @@
 """Substitute values in incoming data"""
-import importlib
-import sys
+from .load_plugin import load_plugin
 
 
 def substitute(templatetype, auth, inputdict):
@@ -15,15 +14,12 @@ def substitute(templatetype, auth, inputdict):
     GitHub.  That does imply that any template whatsoever must have at least
     one field that's guaranteed to be present so that we can use its hook to
     drive creation of the github_* fields."""
-    ctt = "." + templatetype.lower().replace("-", "_")
-    ctr = ".".join(__name__.split(".")[:-1])
-    importlib.import_module(ctt, package=ctr)
-    modname = ctr + ctt
-    symbols = [x for x in sys.modules[modname].__dict__ if x[0] != "_"]
+    module = load_plugin(templatetype)
+    symbols = [x for x in module.__dict__ if x[0] != "_"
+               and x != "finalize_"]
     flist = list(inputdict.keys())
     # Can't iterate over inputdict while mutating it.
     #  However, new fields we add won't be on the change-me list.
     for fld in flist:
         if fld in symbols:
-            inputdict[fld] = getattr(sys.modules[modname], fld)(auth,
-                                                                inputdict)
+            inputdict[fld] = getattr(module, fld)(auth, inputdict)
