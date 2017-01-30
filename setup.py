@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Setuptools Script"""
+"""Setuptools script.
+"""
 import os
 import codecs
 from setuptools import setup, find_packages
