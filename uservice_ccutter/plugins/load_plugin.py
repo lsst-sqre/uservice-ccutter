@@ -1,12 +1,12 @@
 """Load a plugin module by name.
 """
-import importlib
 import sys
-from apikit import BackendError
+import importlib
 try:
     from importlib import ModuleNotFoundError
 except ImportError:
     ModuleNotFoundError = ImportError
+from apikit import BackendError
 
 
 def load_plugin(plugin_name):
