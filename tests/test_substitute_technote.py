@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Test substitution features for technotes"""
+"""Test substitution features for technotes.
+"""
 from copy import deepcopy
 from uservice_ccutter.plugins import substitute
 from uservice_ccutter.plugins.generic import current_year
@@ -32,7 +33,8 @@ TESTDATA = {
 
 
 def test_substitute_technote():
-    """Test field substitution for technotes."""
+    """Test field substitution for technotes.
+    """
     testdict = deepcopy(TESTDATA)
     substitute("lsst-technote-bootstrap", None, testdict)
     changed = ["github_org", "copyright_year"]

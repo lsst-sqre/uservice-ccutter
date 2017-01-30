@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Setuptools Script"""
+"""Setuptools script.
+"""
 import os
 import codecs
 from setuptools import setup, find_packages
@@ -9,7 +10,7 @@ DESCRIPTION = 'Bootstrapper for cookiecutter projects'
 AUTHOR = 'Adam Thornton'
 AUTHOR_EMAIL = 'athornton@lsst.org'
 URL = 'https://github.com/sqre-lsst/uservice-ccutter'
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 LICENSE = 'MIT'
 
 

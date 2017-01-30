@@ -15,11 +15,13 @@ from .generic import current_year
 ORGSERIESMAP = {"sqr": "lsst-sqre",
                 "dmtn": "lsst-dm",
                 "smtn": "lsst-sims",
-                "ldm": "lsst"}
+                "ldm": "lsst",
+                "test": "lsst-sqre"}
 
 
 def serial_number(auth, inputdict):
-    """Find the next available serial number for the specified series."""
+    """Find the next available serial number for the specified series.
+    """
     series = inputdict["series"].lower()
     # Requires that the series pick list has already been replaced with a
     #  string.
@@ -73,20 +75,29 @@ def serial_number(auth, inputdict):
 
 
 def github_org(auth, inputdict):
-    """Derive GitHub Org from the series."""
+    """Derive GitHub Org from the series.
+    """
     return ORGSERIESMAP[inputdict["series"].lower()]
 
 
 def copyright_year(auth, inputdict):
-    """Replace copyright_year with current year."""
+    """Replace copyright_year with current year.
+    """
     return current_year()
 
 
 def first_author(auth, inputdict):
-    """Set canonical GH fields for project creation."""
+    """Set canonical GH fields for project creation.
+    """
     if "github_name" not in inputdict or not inputdict["github_name"]:
         inputdict["github_name"] = inputdict["first_author"]
     # And since we don't currently have email....
     if "github_email" not in inputdict or not inputdict["github_email"]:
         inputdict["github_email"] = "sqrbot@lsst.org"
     return inputdict["first_author"]
+
+
+def finalize_(auth, inputdict):
+    """Register with Keeper.
+    """
+    pass

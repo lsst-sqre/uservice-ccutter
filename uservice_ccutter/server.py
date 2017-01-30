@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""ccutter microservice framework"""
+"""Cookiecutter microservice framework.
+"""
 import json
 import os
 import os.path
@@ -22,16 +23,17 @@ from codekit.codetools import TempDir, get_git_credential_helper
 from cookiecutter.main import cookiecutter
 from cookiecutter.exceptions import CookiecutterException
 from flask import jsonify, request
-from .plugins import substitute
+from .plugins import substitute, finalize
 from .projecturls import PROJECTURLS
 
 
 def server(run_standalone=False):
-    """Create the app and then run it."""
+    """Create the app and then run it.
+    """
     # Add "/ccutter" for mapping behind api.lsst.codes
     with TempDir() as temp_dir:
         app = APIFlask(name="uservice-ccutter",
-                       version="0.0.1",
+                       version="0.0.2",
                        repository="https://github.com/sqre-lsst/" +
                        "uservice-ccutter",
                        description="Bootstrapper for cookiecutter projects",
@@ -56,14 +58,16 @@ def server(run_standalone=False):
         @app.route("/")
         # pylint: disable=unused-variable
         def healthcheck():
-            """Default route to keep Ingress controller happy."""
+            """Default route to keep Ingress controller happy.
+            """
             return "OK"
 
         @app.route("/ccutter")
         @app.route("/ccutter/")
         # pylint: disable=unused-variable
         def display_project_types():
-            """Return cookiecutter.json for each project type"""
+            """Return cookiecutter.json for each project type.
+            """
             retval = {}
             for ptype in app.config["PROJECTTYPE"]:
                 retval[ptype] = get_single_project_type(ptype)
@@ -73,13 +77,15 @@ def server(run_standalone=False):
         @app.route("/ccutter/<ptype>/", methods=["GET", "POST"])
         # pylint: disable=unused-variable
         def action_for_type(ptype):
-            """Either return the template, or create a new thing"""
+            """Either return the template, or create a new thing.
+            """
             if request.method == "GET":
                 return jsonify(get_single_project_type(ptype))
             return post_request(ptype)
 
         def post_request(ptype):
-            """Create project: write to local repo and to GH."""
+            """Create project: write to local repo and to GitHub.
+            """
             # Now we're POSTing.
             # We need authorization to POST.  Raise error if not.
             check_authorization()
@@ -99,11 +105,13 @@ def server(run_standalone=False):
             # Here's the magic.
             substitute(ptype, auth, userdict)
             retval = create_project(ptype, auth, userdict)
+            finalize(ptype, auth, userdict)
             return jsonify(retval)
 
         # pylint: disable=too-many-locals
         def create_project(ptype, auth, userdict):
-            """Create the project"""
+            """Create the project.
+            """
             cloneurl = app.config["PROJECTTYPE"][ptype]["cloneurl"]
             with TempDir() as workdir:
                 clonedir = workdir + "/clonesrc"
@@ -180,7 +188,8 @@ def server(run_standalone=False):
                 return retdict
 
         def create_github_repository(auth, userdict):
-            """Create new repo at GH."""
+            """Create new repo at GitHub.
+            """
             ghub = github3.login(auth["username"], token=auth["password"])
             try:
                 ghub.me()
@@ -212,7 +221,8 @@ def server(run_standalone=False):
             return repo.clone_url
 
         def get_single_project_type(ptype):
-            """Return a single project type's cookiecutter.json."""
+            """Return a single project type's cookiecutter.json.
+            """
             if ptype not in app.config["PROJECTTYPE"]:
                 types = [x for x in app.config["PROJECTTYPE"]]
                 raise BackendError(status_code=400,
@@ -223,7 +233,8 @@ def server(run_standalone=False):
 
         def check_authorization():
             """Sets app.auth["data"] if credentials provided, raises an
-            error otherwise."""
+            error otherwise.
+            """
             iauth = request.authorization
             if iauth is None:
                 raise BackendError(reason="Unauthorized",
@@ -237,12 +248,14 @@ def server(run_standalone=False):
 
 
 def standalone():
-    """Entry point for running as its own executable."""
+    """Entry point for running as its own executable.
+    """
     server(run_standalone=True)
 
 
 def _refresh_cache(app, temp_dir, timeout):
-    """Refresh cookiecutter.json cache if needed."""
+    """Refresh cookiecutter.json cache if needed.
+    """
     # pylint: disable=too-many-locals
     ref = temp_dir + "/last_refresh"
     now = int(time.time())

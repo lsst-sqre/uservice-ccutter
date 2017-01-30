@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""Test substitution features for microservice"""
+"""Test substitution features for microservice.
+"""
 from copy import deepcopy
 from uservice_ccutter.plugins import substitute
 from uservice_ccutter.plugins.generic import current_year
@@ -19,7 +20,8 @@ TESTDATA = {
 
 
 def test_substitute_technote():
-    """Test field substitution for microservices."""
+    """Test field substitution for microservices.
+    """
     testdict = deepcopy(TESTDATA)
     substitute("uservice-bootstrap", None, testdict)
     changed = ["year"]
