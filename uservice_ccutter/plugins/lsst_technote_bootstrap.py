@@ -15,7 +15,8 @@ from .generic import current_year
 ORGSERIESMAP = {"sqr": "lsst-sqre",
                 "dmtn": "lsst-dm",
                 "smtn": "lsst-sims",
-                "ldm": "lsst"}
+                "ldm": "lsst",
+                "test": "lsst-sqre"}
 
 
 def serial_number(auth, inputdict):
