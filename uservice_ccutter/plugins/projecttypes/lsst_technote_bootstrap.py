@@ -31,6 +31,7 @@ ORGSERIESMAP = {"sqr": "lsst-sqre",
 def serial_number(auth, inputdict):
     """Find the next available serial number for the specified series.
     Tidy up some fields that depend on it.
+
     """
     series = inputdict["series"].lower()
     # Requires that the series pick list has already been replaced with a

@@ -34,10 +34,12 @@ cookiecutter projects.
     * Runs cookiecutter to create the project from the template.
 	* Creates a repository on GitHub for the project.
 	* Pushes the project content to GitHub
-  It returns a JSON structure with two fields: `github_repo`
+
+It returns a JSON structure with two fields: `github_repo`
   contains the HTTPS clone url of the new repository, and 
   `post_commit_error` contains either `null` or a string describing any
   errors that occurred after the project was pushed to GitHub.
+
 
 ### Adding new project types
 
