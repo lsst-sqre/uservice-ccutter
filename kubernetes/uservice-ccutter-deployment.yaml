@@ -19,6 +19,8 @@ spec:
               containerPort: 5000
               name: u-ccutter
           env:
+            - name: DEBUG
+              value: debug
             - name: SQRBOT_KEEPER_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -44,8 +46,8 @@ spec:
                 secretKeyRef:
                   name: u-ccutter
                   key: sqrbot.ltd.mason.aws.id
-            - name: SQRBOT_LTD_MASON_AWS_PASSWORD
+            - name: SQRBOT_LTD_MASON_AWS_SECRET
               valueFrom:
                 secretKeyRef:
                   name: u-ccutter
-                  key: sqrbot.ltd.mason.aws.password
+                  key: sqrbot.ltd.mason.aws.secret
