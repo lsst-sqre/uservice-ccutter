@@ -18,4 +18,34 @@ spec:
             -
               containerPort: 5000
               name: u-ccutter
-              
+          env:
+            - name: SQRBOT_KEEPER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.keeper.username
+            - name: SQRBOT_KEEPER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.keeper.password
+            - name: SQRBOT_LTD_KEEPER_USER
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.ltd.keeper.user
+            - name: SQRBOT_LTD_KEEPER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.ltd.keeper.password
+            - name: SQRBOT_LTD_MASON_AWS_ID
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.ltd.mason.aws.id
+            - name: SQRBOT_LTD_MASON_AWS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.ltd.mason.aws.password

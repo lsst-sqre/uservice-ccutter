@@ -44,7 +44,8 @@ setup(
     install_requires=[
         'sqre-apikit==0.0.10',
         'sqre-codekit==2.0.1',
-        'cookiecutter==1.5.0'
+        'cookiecutter==1.5.0',
+        'pycrypto==2.6.1'
     ],
     tests_require=['pytest', 'pytest-flake8', 'pytest-cov'],
     entry_points={

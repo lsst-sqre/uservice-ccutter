@@ -22,5 +22,7 @@ def substitute(templatetype, auth, inputdict):
     # Can't iterate over inputdict while mutating it.
     #  However, new fields we add won't be on the change-me list.
     for fld in flist:
+        # Silently translate "-" to "_"
+        fld = fld.replace("-", "_")
         if fld in symbols:
             inputdict[fld] = getattr(module, fld)(auth, inputdict)
