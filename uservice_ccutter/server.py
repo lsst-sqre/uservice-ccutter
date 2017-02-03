@@ -184,7 +184,11 @@ def server(run_standalone=False):
                 cwr.add_section("credential")
             cwr.set("credential", "helper", chlp)
             cwr.release()
-            # https://gitpython.readthedocs.io/en/stable/tutorial.html
+            # https://gitpython.readthedocs.io/en/stable/tutorial.html:
+            # # Please note that in python 2, writing
+            # # origin.config_writer.set(...) is totally safe.
+            # # In py3 __del__ calls can be delayed, thus not writing changes
+            # # in time.
             #  suggests that you need to wait/sync or something?
             time.sleep(1)
             try:

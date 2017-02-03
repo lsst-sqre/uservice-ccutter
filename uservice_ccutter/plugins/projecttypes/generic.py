@@ -5,11 +5,10 @@ import datetime
 from apikit import BackendError
 
 
-
 def current_year():
     """Return current year as string."""
     return str(datetime.datetime.now().year)
-  
+
 
 def raise_ise(text):
     """Turn error text into a BackendError Internal Server Error.  Handy
