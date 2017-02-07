@@ -303,6 +303,7 @@ def _refresh_cache(app, timeout):
     # That way, when we're asked about what a particular project type
     # needs, we only have to hit GitHub when first asked or when the
     # timeout has expired.
+    app.config["CACHETIME"] = now
     for purl in PROJECTURLS:
         pname = purl.split("/")[-1]
         urlp = urlparse(purl)
