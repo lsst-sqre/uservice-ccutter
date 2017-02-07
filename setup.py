@@ -10,7 +10,7 @@ DESCRIPTION = 'Bootstrapper for cookiecutter projects'
 AUTHOR = 'Adam Thornton'
 AUTHOR_EMAIL = 'athornton@lsst.org'
 URL = 'https://github.com/sqre-lsst/uservice-ccutter'
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 LICENSE = 'MIT'
 
 
@@ -45,6 +45,7 @@ setup(
         'sqre-apikit==0.0.10',
         'sqre-codekit==2.0.1',
         'cookiecutter==1.5.0',
+        'uWSGI==2.0.14',
         'pycrypto==2.6.1'
     ],
     tests_require=['pytest', 'pytest-flake8', 'pytest-cov'],
