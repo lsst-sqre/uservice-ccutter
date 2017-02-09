@@ -22,4 +22,7 @@ USER       uwsgi
 WORKDIR    /home/uwsgi
 COPY	   uwsgi.ini .
 EXPOSE     5000
-CMD        [ "uwsgi", "-T", "uwsgi.ini" ]
+#CMD        [ "uwsgi", "-T", "uwsgi.ini" ]
+# uWSGI doesn't play nice with cookiecutter.
+CMD	   [ "sqre-uservice-ccutter" ]
+
