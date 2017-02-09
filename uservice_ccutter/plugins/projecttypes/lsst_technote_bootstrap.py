@@ -43,7 +43,7 @@ def serial_number(auth, inputdict):
     ghub = github3.login(auth["username"], token=auth["password"])
     try:
         ghub.me()
-    except github3.exceptions.AuthenticationFailed:
+    except (github3.exceptions.AuthenticationFailed, AttributeError):
         raise BackendError(status_code=401,
                            reason="Bad credentials",
                            content="GitHub login failed.")
