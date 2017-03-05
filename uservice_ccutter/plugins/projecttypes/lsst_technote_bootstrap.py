@@ -251,11 +251,11 @@ def _get_keeper_token(tokenurl, auth):
         kpass = os.environ[penv]
     except KeyError:
         raise_ise("Both %s and %s must be set" % (uenv, penv))
-    req = requests.get(tokenurl, auth=(kuser, kpass))
-    raise_from_response(req)
+    resp = requests.get(tokenurl, auth=(kuser, kpass))
+    raise_from_response(resp)
     # pylint: disable=broad-except
     try:
-        token = req.json()["token"]
+        token = resp.json()["token"]
     except Exception as exc:
         raise_ise(str(exc))
     return token
@@ -278,9 +278,9 @@ def _update_keeper(token, inputdict):
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
-    req = requests.post(updateurl, auth=(token, ""), headers=headers,
-                        json=postdata)
-    raise_from_response(req)
+    resp = requests.post(updateurl, auth=(token, ""), headers=headers,
+                         json=postdata)
+    raise_from_response(resp)
 
 
 def _push_to_github(inputdict):
@@ -329,11 +329,13 @@ def _enable_protected_branches(auth, inputdict):
     _debug("Changing protection with URL %s" % prot_url)
     # Sometimes this, weirdly, gets a 404.  We'll wrap it in a retry
     #  loop
-    req = retry_request("put", prot_url, headers=headers, payload=data,
-                        auth=(user, token))
-    raise_from_response(req)
+    resp = retry_request("put", prot_url, headers=headers, payload=data,
+                         auth=(user, token))
+    raise_from_response(resp)
 
 
 def _debug(*args):
+    """Horrible debug function, to be fixed with ticket DM-9717.
+    """
     if os.environ.get("DEBUG"):
         print("DEBUG:", *args)
