@@ -16,6 +16,11 @@ def finalize(templatetype, auth, inputdict):
     None (for success) or an error-descriptive string (for failure).  It
     should not raise an exception.
     """
+    log = None
+    if "_logger_" in inputdict:
+        log = inputdict["_logger_"]
+    if log:
+        log.info("Loading plugin for %s prior to finalization" % templatetype)
     module = load_plugin(templatetype)
     fname = "finalize_"
     retval = None

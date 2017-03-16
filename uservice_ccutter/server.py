@@ -26,13 +26,16 @@ from flask import jsonify, request
 from .plugins import substitute, finalize
 from .projecturls import PROJECTURLS
 
+# pylint: disable=invalid-name
+log = None
+
 
 def server(run_standalone=False):
     """Create the app and then run it.
     """
     # Add "/ccutter" for mapping behind api.lsst.codes
     app = APIFlask(name="uservice-ccutter",
-                   version="0.0.5",
+                   version="0.0.6",
                    repository="https://github.com/sqre-lsst/" +
                    "uservice-ccutter",
                    description="Bootstrapper for cookiecutter projects",
@@ -40,6 +43,9 @@ def server(run_standalone=False):
                    auth={"type": "basic",
                          "data": {"username": "",
                                   "password": ""}})
+    # pylint: disable=global-statement
+    global log
+    log = app.config["LOGGER"]
     max_cache_age = 60 * 60 * 8  # 8 hours
     app.config["PROJECTTYPE"] = {}
     # Cookiecutter requires the order be preserved.
@@ -52,7 +58,9 @@ def server(run_standalone=False):
     # pylint: disable=unused-variable
     def handle_invalid_usage(error):
         """Custom error handler."""
-        response = jsonify(error.to_dict())
+        errdict = error.to_dict()
+        log.error(errdict)
+        response = jsonify(errdict)
         response.status_code = error.status_code
         return response
 
@@ -67,9 +75,9 @@ def server(run_standalone=False):
     @app.route("/ccutter/")
     # pylint: disable=unused-variable
     def display_project_types():
-        _refresh_cache(app, max_cache_age)
         """Return cookiecutter.json for each project type.
         """
+        _refresh_cache(app, max_cache_age)
         retval = {}
         for ptype in app.config["PROJECTTYPE"]:
             retval[ptype] = get_single_project_type(ptype)
@@ -105,6 +113,8 @@ def server(run_standalone=False):
         userdict = deepcopy(app.config["PROJECTTYPE"][ptype]["template"])
         for fld in inputdict:
             userdict[fld] = inputdict[fld]
+        # Here's a gross hack to make our logger visible to plugins:
+        userdict["_logger_"] = log
         # Here's the magic.
         substitute(ptype, auth, userdict)
         # finalize_ may need to do work with checked-out repo
@@ -137,7 +147,12 @@ def server(run_standalone=False):
         git.Git().clone(cloneurl, clonedir)
         # replace cookiecutter.json
         with open(clonedir + "/cookiecutter.json", "w") as ccf:
+            # Cheat: remove the logger before dumping, and glue it back in
+            if "_logger_" in userdict:
+                del userdict["_logger_"]
             ccf.write(json.dumps(userdict, indent=4))
+            if log:
+                userdict["_logger_"] = log
         try:
             cookiecutter(clonedir, no_input=True)
         except (CookiecutterException, TypeError) as exc:
@@ -270,6 +285,8 @@ def server(run_standalone=False):
                                content="No authorization provided.")
         app.config["AUTH"]["data"]["username"] = iauth.username
         app.config["AUTH"]["data"]["password"] = iauth.password
+        global log
+        log = log.bind(username=iauth.username)
 
     if run_standalone:
         app.run(host='0.0.0.0', threaded=True)
@@ -303,6 +320,7 @@ def _refresh_cache(app, timeout):
     # That way, when we're asked about what a particular project type
     # needs, we only have to hit GitHub when first asked or when the
     # timeout has expired.
+    log.info("Cookiecutter cache requires refresh")
     app.config["CACHETIME"] = now
     for purl in PROJECTURLS:
         pname = purl.split("/")[-1]
@@ -311,6 +329,7 @@ def _refresh_cache(app, timeout):
         ccj = "cookiecutter.json"
         rawpath = "https://raw.githubusercontent.com" + path
         rawpath += "/master/" + ccj
+        log.info("Retrieving project template from %s" % rawpath)
         resp = requests.get(rawpath)
         if pname not in app.config["PROJECTTYPE"]:
             app.config["PROJECTTYPE"][pname] = {}

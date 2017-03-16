@@ -19,8 +19,8 @@ spec:
               containerPort: 5000
               name: u-ccutter
           env:
-            - name: DEBUG
-              value: debug
+            - name: LOGLEVEL
+              value: INFO
             - name: SQRBOT_KEEPER_USERNAME
               valueFrom:
                 secretKeyRef:

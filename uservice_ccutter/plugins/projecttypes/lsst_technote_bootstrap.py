@@ -23,11 +23,13 @@ ORGSERIESMAP = {"sqr": "lsst-sqre",
                 "smtn": "lsst-sims",
                 "test": "lsst-sqre"}
 
+# pylint: disable=invalid-name
+log = None
+
 
 def serial_number(auth, inputdict):
     """Find the next available serial number for the specified series.
     Tidy up some fields that depend on it.
-
     """
     series = inputdict["series"].lower()
     # Requires that the series pick list has already been replaced with a
@@ -143,6 +145,21 @@ def finalize_(auth, inputdict):
     This is a pretty good argument for Vault or something like it.
 
     """
+    # We will only worry about logging during finalize_(); the substitution
+    #  functions really don't need it.
+    # If inputdict hasn't had the _logger_ field set, initialize with a null
+    #  logging object so we don't have to keep testing whether log is set
+    #  before using it.
+    # pylint: disable=global-statement
+    global log
+    if "_logger_" in inputdict:
+        log = inputdict["_logger_"]
+    else:
+        # Create a do-nothing logger object.
+        import logging
+        from logging import NullHandler
+        log = logging.getLogger()
+        log.addHandler(NullHandler())
     tokenurl = "https://keeper.lsst.codes/token"
     keeper_token = _get_keeper_token(tokenurl, auth)
     stage = 0
@@ -155,22 +172,32 @@ def finalize_(auth, inputdict):
               ]
     retval = None
     try:
+        log.info("Attempting to: %s" % phases[stage])
         _update_keeper(keeper_token, inputdict)
+        log.info("Completed: %s" % phases[stage])
         stage += 1
         tcli = TravisCI(github_token=auth["password"])
+        log.info("Attempting to: %s" % phases[stage])
         _add_travis_webhook(tcli, inputdict)
+        log.info("Completed: %s" % phases[stage])
         stage += 1
+        log.info("Attempting to: %s" % phases[stage])
         _update_travis_yml(tcli, inputdict, auth["username"].upper())
+        log.info("Completed: %s" % phases[stage])
         stage += 1
+        log.info("Attempting to: %s" % phases[stage])
         _push_to_github(inputdict)
+        log.info("Completed: %s" % phases[stage])
         stage += 1
+        log.info("Attempting to: %s" % phases[stage])
         _enable_protected_branches(auth, inputdict)
+        log.info("Completed: %s" % phases[stage])
         stage += 1
     except BackendError as exc:
         # We actually want the overall API call to succeed, since we have
         #  successfuly created the repository, which is the point of no
         #  return
-        _debug("received BackendError: %s" % str(exc))
+        log.error("received BackendError: %s" % str(exc))
         error_content = "BackendError:\n"
         error_content += str(exc.status_code) + " " + exc.reason + ":\n"
         error_content += str(exc.content)
@@ -179,41 +206,44 @@ def finalize_(auth, inputdict):
         retval += "\n".join(phases[stage:])
         retval += "\nError content was:\n"
         retval += error_content
-        _debug(retval)
+        log.error(retval)
     return retval
 
 
 def _add_travis_webhook(tcli, inputdict):
     """Enable repository for Travis CI.
     """
-    _debug("Adding Travis CI webhook.")
+    log.debug("Adding Travis CI webhook.")
     series = inputdict["series"].lower()
     slug = ORGSERIESMAP[series] + "/" + series + "-" + \
         inputdict["serial_number"]
     tcli.enable_travis_webhook(slug)
-    _debug("Added Travis CI webhook.")
+    log.debug("Added Travis CI webhook.")
 
 
 def _update_travis_yml(tcli, inputdict, username):
-    _debug("Beginning .travis.yml update")
+    """Put encrypted authentication secrets into .travis.yml.
+    """
+    log.debug("Beginning .travis.yml update")
     data = _generate_travis_secrets(tcli, inputdict, username)
     filename = inputdict["local_git_dir"] + "/.travis.yml"
-    _debug("About to try to write %s" % filename)
+    log.debug("About to try to write %s" % filename)
     # pylint: disable=broad-except
     try:
         with open(filename, "a") as travis_yml:
             travis_yml.write(data)
     except Exception as exc:
-        _debug("Received exception: %s: %s", (exc.__class__.__name__,
-                                              str(exc)))
+        log.debug("Received exception: %s: %s", (exc.__class__.__name__,
+                                                 str(exc)))
         raise_ise(str(exc))
-    _debug(".travis.yml updated")
+    log.debug(".travis.yml updated")
 
 
 def _generate_travis_secrets(tcli, inputdict, username):
     """Map environment variables (probably set as Kubernetes secrets)
-    to statements to encrypt and put into travis.yml."""
-    _debug("Encrypting environment variables")
+    to statements to encrypt and put into travis.yml.
+    """
+    log.debug("Encrypting environment variables")
     keeperurl = "https://keeper.lsst.codes"
     travis_base_envvars = ["LTD_KEEPER_USER",
                            "LTD_KEEPER_PASSWORD",
@@ -226,7 +256,7 @@ def _generate_travis_secrets(tcli, inputdict, username):
             travis_env_values.append(os.environ[fullvarname])
         except KeyError as exc:
             raise_ise("Environment variable " + str(exc) + " must be set")
-    _debug("All environment variables present")
+    log.debug("All environment variables present")
     travis_env = dict(zip(travis_base_envvars, travis_env_values))
     travis_env["LTD_KEEPER_URL"] = keeperurl
     secure_env = ""
@@ -234,7 +264,7 @@ def _generate_travis_secrets(tcli, inputdict, username):
 
     for envkey in travis_env:
         envstr = "%s=%s" % (envkey, travis_env[envkey])
-        _debug("About to encrypt %s" % envkey)
+        log.debug("About to encrypt %s" % envkey)
         secure_env += "    - "
         secure_env += tcli.create_travis_secure_string_for_repo(repo, envstr)
         secure_env += "\n"
@@ -242,6 +272,8 @@ def _generate_travis_secrets(tcli, inputdict, username):
 
 
 def _get_keeper_token(tokenurl, auth):
+    """Get token from keeper.lsst.codes.
+    """
     uname = auth["username"].upper()
     uenv = uname + "_KEEPER_USERNAME"
     penv = uname + "_KEEPER_PASSWORD"
@@ -250,6 +282,7 @@ def _get_keeper_token(tokenurl, auth):
         kpass = os.environ[penv]
     except KeyError:
         raise_ise("Both %s and %s must be set" % (uenv, penv))
+    log.info("Requesting token from keeper.lsst.codes")
     resp = requests.get(tokenurl, auth=(kuser, kpass))
     raise_from_response(resp)
     # pylint: disable=broad-except
@@ -325,16 +358,9 @@ def _enable_protected_branches(auth, inputdict):
         "required_pull_request_reviews": None,
         "restrictions": None,
     }
-    _debug("Changing protection with URL %s" % prot_url)
+    log.debug("Changing protection with URL %s" % prot_url)
     # Sometimes this, weirdly, gets a 404.  We'll wrap it in a retry
     #  loop
     resp = retry_request("put", prot_url, headers=headers, payload=data,
                          auth=(user, token))
     raise_from_response(resp)
-
-
-def _debug(*args):
-    """Horrible debug function, to be fixed with ticket DM-9717.
-    """
-    if os.environ.get("DEBUG"):
-        print("DEBUG:", *args)

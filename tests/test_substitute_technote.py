@@ -3,7 +3,7 @@
 """
 from copy import deepcopy
 from uservice_ccutter.plugins import substitute
-from uservice_ccutter.plugins.generic import current_year
+from uservice_ccutter.plugins.projecttypes.generic import current_year
 
 # pylint: disable=bad-continuation
 # We cannot test serial number, because it actually requires talking to
