@@ -5,7 +5,6 @@ from copy import deepcopy
 from uservice_ccutter.plugins import substitute
 from uservice_ccutter.plugins.projecttypes.generic import current_year
 
-
 TESTDATA = {
     "author_name": "First Last",
     "email": "me@lsst.org",
