@@ -35,7 +35,7 @@ def server(run_standalone=False):
     """
     # Add "/ccutter" for mapping behind api.lsst.codes
     app = APIFlask(name="uservice-ccutter",
-                   version="0.0.6",
+                   version="0.0.7",
                    repository="https://github.com/sqre-lsst/" +
                    "uservice-ccutter",
                    description="Bootstrapper for cookiecutter projects",
