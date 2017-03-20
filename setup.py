@@ -10,7 +10,7 @@ DESCRIPTION = 'Bootstrapper for cookiecutter projects'
 AUTHOR = 'Adam Thornton'
 AUTHOR_EMAIL = 'athornton@lsst.org'
 URL = 'https://github.com/sqre-lsst/uservice-ccutter'
-VERSION = '0.0.5'
+VERSION = '0.0.6'
 LICENSE = 'MIT'
 
 
@@ -42,7 +42,7 @@ setup(
     keywords='lsst',
     packages=find_packages(exclude=['docs', 'tests*']),
     install_requires=[
-        'sqre-apikit==0.1.0',
+        'sqre-apikit==0.1.1',
         'sqre-codekit==2.0.2',
         'cookiecutter==1.5.0',
         'sqre-pytravisci==0.0.3',
