@@ -13,7 +13,7 @@ RUN        useradd -d /home/uwsgi -m uwsgi
 RUN        mkdir /dist
 
 # Must run python setup.py sdist first.
-ARG        VERSION="0.0.6"
+ARG        VERSION="0.0.7"
 LABEL      version="$VERSION"
 COPY       dist/sqre-uservice-ccutter-$VERSION.tar.gz /dist
 RUN        pip install /dist/sqre-uservice-ccutter-$VERSION.tar.gz
@@ -22,7 +22,5 @@ USER       uwsgi
 WORKDIR    /home/uwsgi
 COPY	   uwsgi.ini .
 EXPOSE     5000
-#CMD        [ "uwsgi", "-T", "uwsgi.ini" ]
-# uWSGI doesn't play nice with cookiecutter.
-CMD	   [ "sqre-uservice-ccutter" ]
+CMD        [ "uwsgi", "-T", "uwsgi.ini" ]
 

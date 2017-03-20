@@ -10,7 +10,7 @@ DESCRIPTION = 'Bootstrapper for cookiecutter projects'
 AUTHOR = 'Adam Thornton'
 AUTHOR_EMAIL = 'athornton@lsst.org'
 URL = 'https://github.com/sqre-lsst/uservice-ccutter'
-VERSION = '0.0.6'
+VERSION = '0.0.7'
 LICENSE = 'MIT'
 
 
