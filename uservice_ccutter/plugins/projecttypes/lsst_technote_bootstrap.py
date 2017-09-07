@@ -50,7 +50,7 @@ def serial_number(auth, inputdict):
     matchstr = gh_org + "/" + series + "-"
     usedserials = []
     for repo in ghub.repositories():
-        rnm = str(repo)
+        rnm = str(repo).lower()
         if rnm.startswith(matchstr):
             # Take whatever is after the dash as a possible serial number
             serstr = rnm[(len(matchstr)):]
