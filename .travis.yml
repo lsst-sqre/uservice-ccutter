@@ -1,20 +1,12 @@
 sudo: false
 language: python
-matrix:
-  include:
-  - env: TEST='py.test'
-    python: '2.7'
-    install:
-    - pip install flake8 pep8-naming
-    - pip install pytest-flake8 pytest-cov
-    - pip install -r requirements.txt
-    - pip install -e .
-    script: py.test --flake8 --cov=uservice_ccutter
-  - env: TEST='py.test'
-    python: '3.5'
-    install:
-    - pip install flake8 pep8-naming
-    - pip install pytest-flake8 pytest-cov
-    - pip install -r requirements.txt
-    - pip install -e .
-    script: py.test --flake8 --cov=uservice_ccutter
+python:
+  - '3.5'
+  - '3.6'
+install:
+  - pip install flake8 pep8-naming
+  - pip install pytest-flake8 pytest-cov
+  - pip install -r requirements.txt
+  - pip install -e .
+script:
+  - py.test --flake8 --cov=uservice_ccutter

@@ -7,12 +7,7 @@ import os.path
 import time
 from collections import OrderedDict
 from copy import deepcopy
-try:
-    # Python 3
-    from urllib.parse import urlparse
-except ImportError:
-    # Python 2
-    from urlparse import urlparse
+from urllib.parse import urlparse
 import git
 from git.exc import GitCommandError
 import github3

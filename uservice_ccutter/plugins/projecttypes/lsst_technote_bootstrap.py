@@ -8,7 +8,6 @@ dictionary-requiring-substitution as input, and it will change the
 values in that dictionary.
 """
 # pylint: disable=unused-argument
-from __future__ import print_function
 import os
 import git
 from git.exc import GitCommandError
