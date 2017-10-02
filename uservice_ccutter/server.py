@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Cookiecutter microservice framework.
 """
 import json

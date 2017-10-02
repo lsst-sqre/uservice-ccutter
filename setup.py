@@ -52,8 +52,7 @@ setup(
     tests_require=['pytest', 'pytest-flake8', 'pytest-cov'],
     entry_points={
         'console_scripts': [
-            'sqre-uservice-ccutter = uservice_' +
-            'ccutter:standalone'
+            'sqre-uservice-ccutter = uservice_ccutter:standalone'
         ]
     }
 )
