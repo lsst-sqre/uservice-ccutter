@@ -49,7 +49,11 @@ setup(
         'urllib3>=1.22',
         'uWSGI==2.0.14',
     ],
-    tests_require=['pytest', 'pytest-flake8', 'pytest-cov'],
+    extras_require={
+        'dev': ['pytest==3.2.2',
+                'pytest-flake8==0.8.1',
+                'pytest-cov==2.5.1'],
+    },
     entry_points={
         'console_scripts': [
             'sqre-uservice-ccutter = uservice_ccutter:standalone'

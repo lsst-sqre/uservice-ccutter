@@ -5,6 +5,21 @@
 LSST DM SQuaRE api.lsst.codes-compliant microservice wrapper for
 cookiecutter projects.
 
+## Installation and testing
+
+Regular installation:
+
+```
+pip install -e .
+```
+
+For development and testing:
+
+```
+pip install -e ".[dev]"
+pytest
+```
+
 ## Usage
 
 `sqre-uservice-ccutter` will run standalone on port
