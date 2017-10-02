@@ -6,4 +6,4 @@ python:
 install:
   - pip install -e ".[dev]"
 script:
-  - pytest --flake8 --cov=uservice_ccutter
+  - pytest
