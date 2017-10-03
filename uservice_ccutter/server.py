@@ -17,13 +17,11 @@ from codekit.codetools import TempDir, get_git_credential_helper
 from cookiecutter.main import cookiecutter
 from cookiecutter.exceptions import CookiecutterException
 from flask import jsonify, request
+from structlog import get_logger
 
 from .plugins import substitute, finalize
 from .projecturls import PROJECTURLS
 from .github import login_github
-
-# pylint: disable=invalid-name
-log = None
 
 
 def server(run_standalone=False):
@@ -39,9 +37,6 @@ def server(run_standalone=False):
                    auth={"type": "basic",
                          "data": {"username": "",
                                   "password": ""}})
-    # pylint: disable=global-statement
-    global log
-    log = app.config["LOGGER"]
     max_cache_age = 60 * 60 * 8  # 8 hours
     app.config["PROJECTTYPE"] = {}
     # Cookiecutter requires the order be preserved.
@@ -54,8 +49,9 @@ def server(run_standalone=False):
     # pylint: disable=unused-variable
     def handle_invalid_usage(error):
         """Custom error handler."""
+        logger = get_logger()
         errdict = error.to_dict()
-        log.error(errdict)
+        logger.error(errdict)
         response = jsonify(errdict)
         response.status_code = error.status_code
         return response
@@ -109,8 +105,6 @@ def server(run_standalone=False):
         userdict = deepcopy(app.config["PROJECTTYPE"][ptype]["template"])
         for fld in inputdict:
             userdict[fld] = inputdict[fld]
-        # Here's a gross hack to make our logger visible to plugins:
-        userdict["_logger_"] = log
         # Here's the magic.
         substitute(ptype, auth, userdict)
         # finalize_ may need to do work with checked-out repo
@@ -143,12 +137,7 @@ def server(run_standalone=False):
         git.Git().clone(cloneurl, clonedir)
         # replace cookiecutter.json
         with open(clonedir + "/cookiecutter.json", "w") as ccf:
-            # Cheat: remove the logger before dumping, and glue it back in
-            if "_logger_" in userdict:
-                del userdict["_logger_"]
             ccf.write(json.dumps(userdict, indent=4))
-            if log:
-                userdict["_logger_"] = log
         try:
             cookiecutter(clonedir, no_input=True)
         except (CookiecutterException, TypeError) as exc:
@@ -268,6 +257,7 @@ def server(run_standalone=False):
         """Sets app.auth["data"] if credentials provided, raises an
         error otherwise.
         """
+        logger = get_logger()
         iauth = request.authorization
         if iauth is None:
             raise BackendError(reason="Unauthorized",
@@ -275,8 +265,7 @@ def server(run_standalone=False):
                                content="No authorization provided.")
         app.config["AUTH"]["data"]["username"] = iauth.username
         app.config["AUTH"]["data"]["password"] = iauth.password
-        global log
-        log = log.bind(username=iauth.username)
+        logger = logger.bind(username=iauth.username)
 
     if run_standalone:
         app.run(host='0.0.0.0', threaded=True)
@@ -294,6 +283,8 @@ def _refresh_cache(app, timeout):
     """Refresh cookiecutter.json cache if needed.
     """
     # pylint: disable=too-many-locals
+    logger = get_logger()
+
     if "CACHETIME" not in app.config:
         app.config["CACHETIME"] = 0
     last_cache = app.config["CACHETIME"]
@@ -310,7 +301,7 @@ def _refresh_cache(app, timeout):
     # That way, when we're asked about what a particular project type
     # needs, we only have to hit GitHub when first asked or when the
     # timeout has expired.
-    log.info("Cookiecutter cache requires refresh")
+    logger.info("Cookiecutter cache requires refresh")
     app.config["CACHETIME"] = now
     for purl in PROJECTURLS:
         pname = purl.split("/")[-1]
@@ -319,7 +310,7 @@ def _refresh_cache(app, timeout):
         ccj = "cookiecutter.json"
         rawpath = "https://raw.githubusercontent.com" + path
         rawpath += "/master/" + ccj
-        log.info("Retrieving project template from %s" % rawpath)
+        logger.info("Retrieving project template", path=rawpath)
         resp = requests.get(rawpath)
         if pname not in app.config["PROJECTTYPE"]:
             app.config["PROJECTTYPE"][pname] = {}

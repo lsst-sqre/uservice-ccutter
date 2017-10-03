@@ -46,6 +46,7 @@ setup(
         'sqre-codekit==2.0.2',
         'cookiecutter==1.5.0',
         'sqre-pytravisci==0.0.3',
+        'structlog>=17.2.0',
         'urllib3>=1.22',
         'uWSGI==2.0.14',
     ],

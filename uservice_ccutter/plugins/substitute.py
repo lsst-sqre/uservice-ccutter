@@ -1,5 +1,7 @@
 """Substitute values in incoming data by field.
 """
+from structlog import get_logger
+
 from .load_plugin import load_plugin
 
 
@@ -16,11 +18,8 @@ def substitute(templatetype, auth, inputdict):
     one field that's guaranteed to be present so that we can use its hook to
     drive creation of the github_* fields.
     """
-    log = None
-    if "_logger_" in inputdict:
-        log = inputdict["_logger_"]
-    if log:
-        log.info("Loading plugin for %s prior to substitution" % templatetype)
+    logger = get_logger()
+    logger.info("Loading plugin prior to substitution", plugin=templatetype)
     module = load_plugin(templatetype)
     symbols = [x for x in module.__dict__ if x[0] != "_" and x[-1] != "_"]
     flist = list(inputdict.keys())
