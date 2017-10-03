@@ -44,6 +44,7 @@ setup(
     install_requires=[
         'sqre-apikit==0.1.1',
         'sqre-codekit==2.0.2',
+        'celery[redis]==4.1.0',
         'cookiecutter==1.5.0',
         'sqre-pytravisci==0.0.3',
         'structlog>=17.2.0',
