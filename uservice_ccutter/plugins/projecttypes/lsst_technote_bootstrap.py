@@ -9,13 +9,15 @@ values in that dictionary.
 """
 # pylint: disable=unused-argument
 import os
+
 import git
 from git.exc import GitCommandError
-import github3
 import requests
 from travisci import TravisCI
 from apikit import BackendError, retry_request, raise_ise, raise_from_response
+
 from .generic import current_year
+from ...github import login_github
 
 ORGSERIESMAP = {"sqr": "lsst-sqre",
                 "dmtn": "lsst-dm",
@@ -37,18 +39,12 @@ def serial_number(auth, inputdict):
     gh_org = ORGSERIESMAP[series]
     # scanning the product list won't work.  We need to find the next
     #  GitHub repo to use.
-    ghub = github3.login(auth["username"], token=auth["password"])
-    try:
-        ghub.me()
-    except (github3.exceptions.AuthenticationFailed, AttributeError):
-        raise BackendError(status_code=401,
-                           reason="Bad credentials",
-                           content="GitHub login failed.")
+    github_client = login_github(auth["username"], token=auth["password"])
     # Grab org plus series name plus dash.  Anything that starts with that
     #  is a candidate to be something in a series.
     matchstr = gh_org + "/" + series + "-"
     usedserials = []
-    for repo in ghub.repositories():
+    for repo in github_client.repositories():
         rnm = str(repo).lower()
         if rnm.startswith(matchstr):
             # Take whatever is after the dash as a possible serial number

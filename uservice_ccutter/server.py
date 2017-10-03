@@ -7,9 +7,9 @@ import time
 from collections import OrderedDict
 from copy import deepcopy
 from urllib.parse import urlparse
+
 import git
 from git.exc import GitCommandError
-import github3
 import requests
 from apikit import APIFlask
 from apikit import BackendError
@@ -17,8 +17,10 @@ from codekit.codetools import TempDir, get_git_credential_helper
 from cookiecutter.main import cookiecutter
 from cookiecutter.exceptions import CookiecutterException
 from flask import jsonify, request
+
 from .plugins import substitute, finalize
 from .projecturls import PROJECTURLS
+from .github import login_github
 
 # pylint: disable=invalid-name
 log = None
@@ -221,13 +223,7 @@ def server(run_standalone=False):
     def create_github_repository(auth, userdict):
         """Create new repo at GitHub.
         """
-        ghub = github3.login(auth["username"], token=auth["password"])
-        try:
-            ghub.me()
-        except (github3.exceptions.AuthenticationFailed, AttributeError):
-            raise BackendError(status_code=401,
-                               reason="Bad credentials",
-                               content="GitHub login failed.")
+        github_client = login_github(auth['username'], token=auth["password"])
         namespc = userdict["github_repo"]
         orgname, reponame = namespc.split('/')
         desc = ""
@@ -240,7 +236,7 @@ def server(run_standalone=False):
             homepage = userdict["github_homepage"]
         org_object = None
         # Find corresponding Organization object
-        for accessible_org in ghub.organizations():
+        for accessible_org in github_client.organizations():
             if accessible_org.login == orgname:
                 org_object = accessible_org
                 break
