@@ -7,7 +7,6 @@ type as the first string argument and your
 dictionary-requiring-substitution as input, and it will change the
 values in that dictionary.
 """
-# pylint: disable=unused-argument
 import os
 
 import git
@@ -210,7 +209,6 @@ def _update_travis_yml(tcli, inputdict, username):
     data = _generate_travis_secrets(tcli, inputdict, username)
     filename = inputdict["local_git_dir"] + "/.travis.yml"
     logger.debug("About to try to write .travis.yml", filename=filename)
-    # pylint: disable=broad-except
     try:
         with open(filename, "a") as travis_yml:
             travis_yml.write(data)
@@ -268,7 +266,6 @@ def _get_keeper_token(tokenurl, auth):
     logger.info("Requesting token from keeper.lsst.codes")
     resp = requests.get(tokenurl, auth=(kuser, kpass))
     raise_from_response(resp)
-    # pylint: disable=broad-except
     try:
         token = resp.json()["token"]
     except Exception as exc:

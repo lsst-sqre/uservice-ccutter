@@ -45,8 +45,6 @@ def server(run_standalone=False):
     _refresh_cache(app, max_cache_age)
 
     @app.errorhandler(BackendError)
-    # pylint can't understand decorators.
-    # pylint: disable=unused-variable
     def handle_invalid_usage(error):
         """Custom error handler."""
         logger = get_logger()
@@ -57,7 +55,6 @@ def server(run_standalone=False):
         return response
 
     @app.route("/")
-    # pylint: disable=unused-variable
     def healthcheck():
         """Default route to keep Ingress controller happy.
         """
@@ -65,7 +62,6 @@ def server(run_standalone=False):
 
     @app.route("/ccutter")
     @app.route("/ccutter/")
-    # pylint: disable=unused-variable
     def display_project_types():
         """Return cookiecutter.json for each project type.
         """
@@ -77,7 +73,6 @@ def server(run_standalone=False):
 
     @app.route("/ccutter/<ptype>", methods=["GET", "POST"])
     @app.route("/ccutter/<ptype>/", methods=["GET", "POST"])
-    # pylint: disable=unused-variable
     def action_for_type(ptype):
         """Either return the template, or create a new thing.
         """
@@ -115,7 +110,6 @@ def server(run_standalone=False):
             # Therefore, if finalize raises an exception (it shouldn't)
             #  we must catch it and wrap it.
             pce = None
-            # pylint: disable=broad-except
             try:
                 pce = finalize(ptype, auth, userdict)
             except Exception as exc:
@@ -124,7 +118,6 @@ def server(run_standalone=False):
             retval["post_commit_error"] = pce
             return jsonify(retval)
 
-    # pylint: disable=too-many-locals
     def create_project(ptype, auth, userdict, workdir):
         """Create the project.
         """
@@ -282,7 +275,6 @@ def standalone():
 def _refresh_cache(app, timeout):
     """Refresh cookiecutter.json cache if needed.
     """
-    # pylint: disable=too-many-locals
     logger = get_logger()
 
     if "CACHETIME" not in app.config:
