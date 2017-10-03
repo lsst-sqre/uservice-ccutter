@@ -57,8 +57,6 @@ setup(
                 'pytest-pylint==0.7.1'],
     },
     entry_points={
-        'console_scripts': [
-            'sqre-uservice-ccutter = uservice_ccutter:standalone'
-        ]
+        'console_scripts': []
     }
 )

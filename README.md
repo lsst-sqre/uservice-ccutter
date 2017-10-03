@@ -22,8 +22,11 @@ pytest
 
 ## Usage
 
-`sqre-uservice-ccutter` will run standalone on port
-5000 or under `uwsgi`.  It responds to the following routes:
+Run the app during development with:
+
+```
+DEBUG=1 FLASK_APP=uservice_ccutter:flask_app flask run
+```
 
 ### Routes
 
