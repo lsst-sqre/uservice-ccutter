@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Test substitution features for technotes.
 """
 from copy import deepcopy
