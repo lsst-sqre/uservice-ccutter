@@ -52,7 +52,8 @@ setup(
     extras_require={
         'dev': ['pytest==3.2.2',
                 'pytest-flake8==0.8.1',
-                'pytest-cov==2.5.1'],
+                'pytest-cov==2.5.1',
+                'pytest-pylint==0.7.1'],
     },
     entry_points={
         'console_scripts': [
