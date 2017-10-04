@@ -9,12 +9,12 @@ values in that dictionary.
 """
 import os
 
+from celery.utils.log import get_task_logger
 import git
 from git.exc import GitCommandError
 import requests
 from travisci import TravisCI
-from apikit import BackendError, retry_request, raise_ise, raise_from_response
-from structlog import get_logger
+from apikit import retry_request, raise_ise, raise_from_response
 
 from .generic import current_year
 from ...github import login_github
@@ -22,7 +22,9 @@ from ...github import login_github
 ORGSERIESMAP = {"sqr": "lsst-sqre",
                 "dmtn": "lsst-dm",
                 "smtn": "lsst-sims",
-                "test": "lsst-sqre"}
+                "test": "lsst-sqre-testing"}
+
+logger = get_task_logger(__name__)
 
 
 def serial_number(auth, inputdict):
@@ -136,7 +138,7 @@ def finalize_(auth, inputdict):
 
     This is a pretty good argument for Vault or something like it.
     """
-    logger = get_logger()
+    logger.debug('finalize_ inputdict: %r', inputdict)
 
     tokenurl = "https://keeper.lsst.codes/token"
     keeper_token = _get_keeper_token(tokenurl, auth)
@@ -150,80 +152,68 @@ def finalize_(auth, inputdict):
               ]
     retval = None
     try:
-        logger.info("Attempting to: %s" % phases[stage])
+        logger.info("Attempting to: %s", phases[stage])
         _update_keeper(keeper_token, inputdict)
-        logger.info("Completed: %s" % phases[stage])
+        logger.info("Completed: %s", phases[stage])
         stage += 1
 
         tcli = TravisCI(github_token=auth["password"])
-        logger.info("Attempting to: %s" % phases[stage])
+        logger.info("Attempting to: %s", phases[stage])
         _add_travis_webhook(tcli, inputdict)
-        logger.info("Completed: %s" % phases[stage])
+        logger.info("Completed: %s", phases[stage])
         stage += 1
 
-        logger.info("Attempting to: %s" % phases[stage])
+        logger.info("Attempting to: %s", phases[stage])
         _update_travis_yml(tcli, inputdict, auth["username"].upper())
-        logger.info("Completed: %s" % phases[stage])
+        logger.info("Completed: %s", phases[stage])
         stage += 1
 
-        logger.info("Attempting to: %s" % phases[stage])
+        logger.info("Attempting to: %s", phases[stage])
         _push_to_github(inputdict)
-        logger.info("Completed: %s" % phases[stage])
+        logger.info("Completed: %s", phases[stage])
         stage += 1
 
-        logger.info("Attempting to: %s" % phases[stage])
+        logger.info("Attempting to: %s", phases[stage])
         _enable_protected_branches(auth, inputdict)
-        logger.info("Completed: %s" % phases[stage])
+        logger.info("Completed: %s", phases[stage])
         stage += 1
-    except BackendError as exc:
+    except Exception as exc:
         # We actually want the overall API call to succeed, since we have
         #  successfuly created the repository, which is the point of no
         #  return
-        logger.error("received BackendError",
-                     exec_info=exc,
-                     status_code=exc.status_code,
-                     reason=exc.reason,
-                     content=exc.content)
-        logger.error('Post-commit finalization failed',
-                     incomplete_stages=', '.join(phases[stage:]))
+        logger.error("Exception in finalization: %s", str(exc))
+        logger.error('Incomplete finalization stages: %r',
+                     ', '.join(phases[stage:]))
     return retval
 
 
 def _add_travis_webhook(tcli, inputdict):
     """Enable repository for Travis CI.
     """
-    logger = get_logger()
-    logger.debug("Adding Travis CI webhook.")
     series = inputdict["series"].lower()
     slug = ORGSERIESMAP[series] + "/" + series + "-" + \
         inputdict["serial_number"]
     tcli.enable_travis_webhook(slug)
-    logger.debug("Added Travis CI webhook.")
 
 
 def _update_travis_yml(tcli, inputdict, username):
     """Put encrypted authentication secrets into .travis.yml.
     """
-    logger = get_logger()
-    logger.debug("Beginning .travis.yml update")
     data = _generate_travis_secrets(tcli, inputdict, username)
     filename = inputdict["local_git_dir"] + "/.travis.yml"
-    logger.debug("About to try to write .travis.yml", filename=filename)
+    logger.debug("About to try to write %r", filename)
     try:
         with open(filename, "a") as travis_yml:
             travis_yml.write(data)
     except Exception as exc:
-        logger.error("Exception updating .travis.yml", exec_info=exc)
+        logger.error("Exception updating .travis.yml")
         raise_ise(str(exc))
-    logger.debug(".travis.yml updated")
 
 
 def _generate_travis_secrets(tcli, inputdict, username):
     """Map environment variables (probably set as Kubernetes secrets)
     to statements to encrypt and put into travis.yml.
     """
-    logger = get_logger()
-    logger.debug("Encrypting Travis environment variables")
     keeperurl = "https://keeper.lsst.codes"
     travis_base_envvars = ["LTD_KEEPER_USER",
                            "LTD_KEEPER_PASSWORD",
@@ -244,7 +234,7 @@ def _generate_travis_secrets(tcli, inputdict, username):
 
     for envkey in travis_env:
         envstr = "%s=%s" % (envkey, travis_env[envkey])
-        logger.debug("Travis encrypt", key=envkey)
+        logger.debug("Travis encrypt: %r", envkey)
         secure_env += "    - "
         secure_env += tcli.create_travis_secure_string_for_repo(repo, envstr)
         secure_env += "\n"
@@ -254,7 +244,6 @@ def _generate_travis_secrets(tcli, inputdict, username):
 def _get_keeper_token(tokenurl, auth):
     """Get token from keeper.lsst.codes.
     """
-    logger = get_logger()
     uname = auth["username"].upper()
     uenv = uname + "_KEEPER_USERNAME"
     penv = uname + "_KEEPER_PASSWORD"
@@ -262,6 +251,7 @@ def _get_keeper_token(tokenurl, auth):
         kuser = os.environ[uenv]
         kpass = os.environ[penv]
     except KeyError:
+        logger.error("Both %r and %r must be set", uenv, penv)
         raise_ise("Both %s and %s must be set" % (uenv, penv))
     logger.info("Requesting token from keeper.lsst.codes")
     resp = requests.get(tokenurl, auth=(kuser, kpass))
@@ -311,16 +301,35 @@ def _push_to_github(inputdict):
 
 
 def _enable_protected_branches(auth, inputdict):
-    logger = get_logger()
-    # https://developer.github.com/v3/repos/branches/
-    # Currently (February 1, 2017) experimental
-    gh_host = "https://api.github.com"
+    """Enable GitHub branch protections to block on Travis CI status.
+
+    Parameters
+    ----------
+    auth : `dict`
+        Fields are:
+
+        - ``username``: GitHub API username.
+        - ``password``: GitHub API token.
+
+    inputdict : `dict`
+        Dictionary with required keys:
+
+        - ``github_repo``: Name of the GitHub repo, formatted
+          ``org_name/repo_name``.
+
+    Notes
+    -----
+    Uses the
+    ``PUT /repos/:owner/:repo/branches/:branch/protection`` GitHub API.
+    https://developer.github.com/v3/repos/branches/#update-branch-protection
+    """
     # The GitHub user, rather terrifyingly, claims it needs admin access in
     #  order to protect branches, but it doesn't.  If you have the permissions
     #  you need in order to create a repo in the first place and to do the
     #  Travis CI integration, you're fine.
     user = auth["username"]
     token = auth["password"]
+    gh_host = "https://api.github.com"
     prot_path = "/repos/" + inputdict["github_repo"] + \
         "/branches/master/protection"
     prot_url = gh_host + prot_path
@@ -339,7 +348,7 @@ def _enable_protected_branches(auth, inputdict):
         "required_pull_request_reviews": None,
         "restrictions": None,
     }
-    logger.debug("Changing branch protection", endpoint=prot_url)
+    logger.debug("Changing branch protection %r", endpoint_url)
     # Sometimes this, weirdly, gets a 404.  We'll wrap it in a retry
     #  loop
     resp = retry_request("put", prot_url, headers=headers, payload=data,
