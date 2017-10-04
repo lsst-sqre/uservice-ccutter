@@ -55,7 +55,8 @@ setup(
         'dev': ['pytest==3.2.2',
                 'pytest-flake8==0.8.1',
                 'pytest-cov==2.5.1',
-                'pytest-pylint==0.7.1'],
+                'pytest-pylint==0.7.1',
+                'flower'],
     },
     entry_points={
         'console_scripts': []

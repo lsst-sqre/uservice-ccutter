@@ -22,10 +22,31 @@ pytest
 
 ## Usage
 
-Run the app during development with:
+Start up the Redis backend:
+
+```
+docker run --rm --name redis-dev -p 6379:6379 redis
+```
+
+Start up a celery worker:
+
+```
+celery -A uservice_ccutter.celery_app -E -l DEBUG worker
+```
+
+Run the app for development with:
 
 ```
 DEBUG=1 FLASK_APP=uservice_ccutter:flask_app flask run
+```
+
+Both the Flask app and Celery worker need to be restarted to get updated code
+changes.
+
+To see the Celery task queue, start a [Flower](http://flower.readthedocs.io/en/latest/) monitor:
+
+```
+celery -A uservice_ccutter.celery_app flower
 ```
 
 ### Routes
