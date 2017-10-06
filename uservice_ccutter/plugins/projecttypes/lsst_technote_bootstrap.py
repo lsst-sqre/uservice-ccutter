@@ -8,6 +8,7 @@ dictionary-requiring-substitution as input, and it will change the
 values in that dictionary.
 """
 import os
+from urllib.parse import urljoin
 
 from celery.utils.log import get_task_logger
 import git
@@ -139,6 +140,8 @@ def finalize_(auth, inputdict):
     This is a pretty good argument for Vault or something like it.
     """
     logger.debug('finalize_ inputdict: %r', inputdict)
+
+    logger.debug('finalize_ inputdict: %r' % inputdict)
 
     tokenurl = "https://keeper.lsst.codes/token"
     keeper_token = _get_keeper_token(tokenurl, auth)
@@ -329,28 +332,33 @@ def _enable_protected_branches(auth, inputdict):
     #  Travis CI integration, you're fine.
     user = auth["username"]
     token = auth["password"]
+
     gh_host = "https://api.github.com"
-    prot_path = "/repos/" + inputdict["github_repo"] + \
-        "/branches/master/protection"
-    prot_url = gh_host + prot_path
+    endpoint_path = '/repos/{github_repo}/branches/{branch}/protection'
+    endpoint_path = endpoint_path.format(github_repo=inputdict['github_repo'],
+                                         branch='master')
+    endpoint_url = urljoin(gh_host, endpoint_path)
+
     headers = {
-        "Accept": "application/vnd.github.loki-preview+json",
+        "Accept": "application/vnd.github.v3+json",
         "Content-Type": "application/json",
     }
+
     data = {
         "required_status_checks": {
-            "include_admins": True,
             "strict": True,
             "contexts": [
                 "continuous-integration/travis-ci",
             ],
         },
+        "enforce_admins": True,
         "required_pull_request_reviews": None,
         "restrictions": None,
     }
     logger.debug("Changing branch protection %r", endpoint_url)
+
     # Sometimes this, weirdly, gets a 404.  We'll wrap it in a retry
     #  loop
-    resp = retry_request("put", prot_url, headers=headers, payload=data,
+    resp = retry_request("put", endpoint_url, headers=headers, payload=data,
                          auth=(user, token))
     raise_from_response(resp)
