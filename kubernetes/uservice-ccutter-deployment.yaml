@@ -13,7 +13,7 @@ spec:
 
         - name: u-ccutter
           imagePullPolicy: "Always"
-          image: "lsstsqre/uservice-ccutter"
+          image: "lsstsqre/uservice-ccutter:DM-10923"
           ports:
             -
               containerPort: 5000
@@ -51,3 +51,57 @@ spec:
                 secretKeyRef:
                   name: u-ccutter
                   key: sqrbot.ltd.mason.aws.secret
+            - name: REDIS_URL
+              value: "redis://localhost:6379"
+
+        - name: u-ccutter-worker
+          imagePullPolicy: "Always"
+          image: "lsstsqre/uservice-ccutter:DM-10923"
+          command: ["celery"]
+          args: ["-A", "uservice_ccutter.celery_app", "-E", "-l", "$(LOGLEVEL)", "worker"]
+          ports:
+            -
+              containerPort: 5000
+              name: u-ccutter
+          env:
+            - name: LOGLEVEL
+              value: INFO
+            - name: SQRBOT_KEEPER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.keeper.username
+            - name: SQRBOT_KEEPER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.keeper.password
+            - name: SQRBOT_LTD_KEEPER_USER
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.ltd.keeper.user
+            - name: SQRBOT_LTD_KEEPER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.ltd.keeper.password
+            - name: SQRBOT_LTD_MASON_AWS_ID
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.ltd.mason.aws.id
+            - name: SQRBOT_LTD_MASON_AWS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: u-ccutter
+                  key: sqrbot.ltd.mason.aws.secret
+            - name: REDIS_URL
+              value: "redis://localhost:6379"
+
+        - name: u-ccutter-redis
+          imagePullPolicy: "Always"
+          image: redis
+          ports:
+            - containerPort: 6379
+              name: "redis"
