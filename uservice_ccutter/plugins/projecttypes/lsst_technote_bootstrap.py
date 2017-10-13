@@ -190,13 +190,14 @@ def finalize_(auth, inputdict):
     return retval
 
 
-def _add_travis_webhook(tcli, inputdict):
+def _add_travis_webhook(tcli, inputdict, retries=10):
     """Enable repository for Travis CI.
     """
     series = inputdict["series"].lower()
     slug = ORGSERIESMAP[series] + "/" + series + "-" + \
         inputdict["serial_number"]
-    tcli.enable_travis_webhook(slug)
+    tcli.enable_travis_webhook(slug, retry_args={'tries': 20,
+                                                 'initial_interval': 30})
 
 
 def _update_travis_yml(tcli, inputdict, username):
