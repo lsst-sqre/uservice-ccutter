@@ -193,11 +193,22 @@ def finalize_(auth, inputdict):
 def _add_travis_webhook(tcli, inputdict, retries=10):
     """Enable repository for Travis CI.
     """
+    def _retry_callback(n=None, remaining=None, status=None, content=None):
+        """Callback for enable_travis_webhook called after each unsuccessful
+        retry attempt.
+        """
+        logger.info('Travis webhook try %r/%r, Travis status=%r',
+                    n, n + remaining, status)
+        # Kick the resync endpoint again
+        tcli.start_travis_sync()
+
     series = inputdict["series"].lower()
     slug = ORGSERIESMAP[series] + "/" + series + "-" + \
         inputdict["serial_number"]
-    tcli.enable_travis_webhook(slug, retry_args={'tries': 20,
-                                                 'initial_interval': 30})
+    # Set up the retries to go for about an hour
+    tcli.enable_travis_webhook(slug, retry_args={'tries': 17,
+                                                 'initial_interval': 30,
+                                                 'callback': _retry_callback})
 
 
 def _update_travis_yml(tcli, inputdict, username):

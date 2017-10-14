@@ -42,7 +42,7 @@ setup(
     keywords='lsst',
     packages=find_packages(exclude=['docs', 'tests*']),
     install_requires=[
-        'sqre-apikit==0.1.1',
+        'sqre-apikit==0.1.2',
         'sqre-codekit==2.0.2',
         'celery[redis]==4.1.0',
         'cookiecutter==1.5.0',
