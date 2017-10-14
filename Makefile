@@ -1,12 +1,16 @@
-.PHONY: help server worker flower run
+.PHONY: help server worker flower run image docker-push
+
+VERSION=$(shell python -m uservice_ccutter.version)
 
 help:
 	@echo "Run these commands in separate shells:"
-	@echo "  make redis  (start a Redis Docker container)"
-	@echo "  make server (start the Flask app)"
-	@echo "  make worker (start a Celery worker)"
-	@echo "  make flower (start the Flower task monitor)"
-	@echo "  run         (send a test request)"
+	@echo "  make redis       (start a Redis Docker container)"
+	@echo "  make server      (start the Flask app)"
+	@echo "  make worker      (start a Celery worker)"
+	@echo "  make flower      (start the Flower task monitor)"
+	@echo "  make run         (send a test request)"
+	@echo "  make image       (make tagged Docker image)"
+	@echo "  make docker-push (push image to Docker Hub)"
 
 redis:
 	docker run --rm --name redis-dev -p 6379:6379 redis
@@ -22,3 +26,10 @@ flower:
 
 run:
 	source "./test.credentials.sh"; ./test.sh
+
+image:
+	python setup.py sdist
+	docker build -t lsstsqre/uservice-ccutter:$(VERSION) .
+
+docker-push:
+	docker push lsstsqre/uservice-ccutter:$(VERSION)

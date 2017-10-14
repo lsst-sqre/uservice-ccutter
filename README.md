@@ -20,6 +20,13 @@ pip install -e ".[dev]"
 pytest
 ```
 
+To make and push the Docker image:
+
+```
+make image
+make docker-push
+```
+
 ## Running locally
 
 You can run the app locally for development before deploying with Kubernetes.
