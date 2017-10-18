@@ -17,7 +17,13 @@ For development and testing:
 
 ```
 pip install -e ".[dev]"
-pytest
+make test
+```
+
+Run additional linting with pytest:
+
+```
+make pylint
 ```
 
 To make and push the Docker image:

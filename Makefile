@@ -1,4 +1,4 @@
-.PHONY: help server worker flower run image docker-push
+.PHONY: help server worker flower run image docker-push test pylint
 
 VERSION=$(shell python -m uservice_ccutter.version)
 
@@ -11,6 +11,8 @@ help:
 	@echo "  make run         (send a test request)"
 	@echo "  make image       (make tagged Docker image)"
 	@echo "  make docker-push (push image to Docker Hub)"
+	@echo "  make test        (run unit tests pytest)"
+	@echo "  make pylint      (run pylint)"
 
 redis:
 	docker run --rm --name redis-dev -p 6379:6379 redis
@@ -33,3 +35,9 @@ image:
 
 docker-push:
 	docker push lsstsqre/uservice-ccutter:$(VERSION)
+
+test:
+	pytest
+
+pylint:
+	pytest --pylint
