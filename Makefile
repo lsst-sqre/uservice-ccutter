@@ -31,7 +31,7 @@ run:
 
 image:
 	python setup.py sdist
-	docker build -t lsstsqre/uservice-ccutter:$(VERSION) .
+	docker build --build-arg VERSION=$(VERSION) -t lsstsqre/uservice-ccutter:$(VERSION) .
 
 docker-push:
 	docker push lsstsqre/uservice-ccutter:$(VERSION)

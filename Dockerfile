@@ -10,7 +10,8 @@ RUN        useradd -d /home/uwsgi -m uwsgi
 RUN        mkdir /dist
 
 # Must run python setup.py sdist first.
-ARG        VERSION="0.0.9"
+# Supply as on CL as --build-arg VERSION=<version> (or run `make image`).
+ARG        VERSION
 LABEL      version="$VERSION"
 COPY       dist/sqre-uservice-ccutter-$VERSION.tar.gz /dist
 RUN        pip install /dist/sqre-uservice-ccutter-$VERSION.tar.gz
