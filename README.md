@@ -5,12 +5,72 @@
 LSST DM SQuaRE api.lsst.codes-compliant microservice wrapper for
 cookiecutter projects.
 
-## Usage
+## Installation and testing
 
-`sqre-uservice-ccutter` will run standalone on port
-5000 or under `uwsgi`.  It responds to the following routes:
+Regular installation:
 
-### Routes
+```
+pip install -e .
+```
+
+For development and testing:
+
+```
+pip install -e ".[dev]"
+make test
+```
+
+Run additional linting with pytest:
+
+```
+make pylint
+```
+
+To make and push the Docker image:
+
+```
+make image
+make docker-push
+```
+
+## Running locally
+
+You can run the app locally for development before deploying with Kubernetes.
+
+First, copy `test.credentials.template.sh` to `test.credentials.sh` and  fill in the environment variables:
+
+- `SQRBOT_KEEPER_USERNAME`: the `keeper.lsst.codes` username for project admin.
+- `SQRBOT_KEEPER_PASSWORD`: the `keeper.lsst.codes` password for project admin.
+- `SQRBOT_LTD_KEEPER_USERNAME`: the `keeper.lsst.codes` username to embed in the technote.
+- `SQRBOT_LTD_KEEPER_PASSWORD`: the `keeper.lsst.codes` password to embed in the technote.
+- `SQRBOT_LTD_MASON_AWS_ID`: the AWS secret ID to embed in the technote.
+- `SQRBOT_LTD_MASON_AWS_SECRET`: the AWS secret key to embed in the technote.
+- `SQRBOT_USERNAME`: GitHub username.
+- `SQRBOT_GITHUB_TOKEN: GitHub personal access token with these permissions:
+  - `public_repo`
+  - `repo:status`
+  - `user`
+  - `write:repo_hook`
+
+Next, run the services in **four separate shells**:
+
+1. `make redis` — start up the Redis container.
+
+2. `make server` — start up the Flask app.
+
+3. `make worker` — start up the Celery task worker.
+
+3. `make run` — send a test `POST /ccutter/lsst-technote-bootstrap/` request.
+
+You'll need to re-run steps 2 – 4 if you change application code (use control-C to stop the server processes).
+
+To see the Celery task queue, start a [Flower](http://flower.readthedocs.io/en/latest/) monitor:
+
+```
+celery -A uservice_ccutter.celery_app flower
+```
+
+## HTTP Routes
 
 * `GET /`: returns `OK` (used by Google Container Engine Ingress healthcheck)
 
@@ -35,7 +95,7 @@ cookiecutter projects.
 	* Creates a repository on GitHub for the project.
 	* Pushes the project content to GitHub
 
-### Return Values
+## Return Values
 
 * If the project creation succeeds in pushing this content, the API call
   itself is guaranteed to return `200 OK`.  Prior to the push
@@ -54,7 +114,7 @@ cookiecutter projects.
   enough information to the user that it is possible to determine what
   manual actions must be taken to finish creating the project.
 
-### Adding new project types
+## Adding new project types
 
 To add a new project type, the developer must do the following:
 
@@ -87,7 +147,7 @@ To add a new project type, the developer must do the following:
 See `uservice_ccutter/plugins/substitute.py` for more information on
 field substitution.
 
-#### Function Naming Conventions
+### Function Naming Conventions
 
 In your `<typename>.py` file, field names are mapped verbatim to
 function names, except that dashes in field names are replaced with
@@ -96,7 +156,7 @@ underscores in function names, due to Python naming requirements.
 Functions ending with a single underscore are reserved for use by the
 plugin machinery, e.g. `finalize_`.
 
-#### The `finalize_` function
+### The `finalize_` function
 
 A project type may need to perform actions after its GitHub repository
 has been created.  It does this in a function called `finalize_`.  If a

@@ -7,7 +7,6 @@ type as the first string argument and your
 dictionary-requiring-substitution as input, and it will change the
 values in that dictionary.
 """
-# pylint: disable=unused-argument
 
 from .generic import current_year
 

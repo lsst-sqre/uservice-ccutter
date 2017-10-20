@@ -3,6 +3,7 @@
 import sys
 import importlib
 try:
+    # Python 3.6+
     from importlib import ModuleNotFoundError
 except ImportError:
     ModuleNotFoundError = ImportError
