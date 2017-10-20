@@ -13,7 +13,7 @@ spec:
 
         - name: u-ccutter
           imagePullPolicy: "Always"
-          image: "lsstsqre/uservice-ccutter:DM-10923"
+          image: "lsstsqre/uservice-ccutter:0.1.0"
           ports:
             -
               containerPort: 5000
@@ -56,7 +56,7 @@ spec:
 
         - name: u-ccutter-worker
           imagePullPolicy: "Always"
-          image: "lsstsqre/uservice-ccutter:DM-10923"
+          image: "lsstsqre/uservice-ccutter:0.1.0"
           command: ["celery"]
           args: ["-A", "uservice_ccutter.celery_app", "-E", "-l", "$(LOGLEVEL)", "worker"]
           ports:
